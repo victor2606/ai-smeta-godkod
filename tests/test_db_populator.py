@@ -265,14 +265,14 @@ class TestPopulateRates:
         )
         assert fts_results[0][0] == len(sample_rates_df)
 
-        # Test FTS search works
+        # Test FTS search works with pre-computed search_text
         search_results = populator.db_manager.execute_query(
             """
             SELECT r.rate_code FROM rates r
             JOIN rates_fts fts ON r.rowid = fts.rowid
             WHERE rates_fts MATCH ?
             """,
-            ('гипсокартон',)
+            ('перегородок',)
         )
         assert len(search_results) > 0
         assert search_results[0][0] == 'R001'
@@ -712,10 +712,10 @@ class TestIntegration:
         assert count2 == 3
 
     def test_fts_search_after_population(self, populator, sample_rates_df):
-        """Test FTS search functionality after population."""
+        """Test FTS search functionality after population with pre-computed search_text."""
         populator.populate_rates(sample_rates_df)
 
-        # Search for "гипсокартон"
+        # Search for "перегородок" (exists in rate_full_name)
         results = populator.db_manager.execute_query(
             """
             SELECT r.rate_code, r.rate_full_name
@@ -723,11 +723,11 @@ class TestIntegration:
             JOIN rates_fts fts ON r.rowid = fts.rowid
             WHERE rates_fts MATCH ?
             """,
-            ('гипсокартон',)
+            ('перегородок',)
         )
 
         assert len(results) > 0
-        assert 'гипсокартон' in results[0][1].lower()
+        assert 'перегородок' in results[0][1].lower()
 
     def test_cascade_delete_resources(self, populator, sample_rates_df, sample_resources_df):
         """Test CASCADE delete removes resources when rate deleted."""

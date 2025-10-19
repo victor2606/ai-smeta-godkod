@@ -102,18 +102,10 @@ CREATE VIRTUAL TABLE IF NOT EXISTS rates_fts USING fts5(
 -- ============================================================================
 -- TRIGGER: rates_fts_insert
 -- Description: Automatically populate FTS index when new rate is inserted
+-- Note: search_text must be pre-computed before INSERT (handled by DatabasePopulator)
 -- ============================================================================
 CREATE TRIGGER IF NOT EXISTS rates_fts_insert AFTER INSERT ON rates BEGIN
-    -- Update search_text with concatenated searchable fields
-    UPDATE rates SET search_text =
-        COALESCE(NEW.rate_code, '') || ' ' ||
-        COALESCE(NEW.rate_full_name, '') || ' ' ||
-        COALESCE(NEW.rate_short_name, '') || ' ' ||
-        COALESCE(NEW.category, '') || ' ' ||
-        COALESCE(NEW.composition, '')
-    WHERE rate_code = NEW.rate_code;
-
-    -- Insert into FTS index
+    -- Insert into FTS index using pre-computed search_text
     INSERT INTO rates_fts(rowid, rate_code, rate_full_name, rate_short_name, category, search_text)
     VALUES (
         NEW.rowid,
@@ -121,43 +113,28 @@ CREATE TRIGGER IF NOT EXISTS rates_fts_insert AFTER INSERT ON rates BEGIN
         NEW.rate_full_name,
         NEW.rate_short_name,
         NEW.category,
-        COALESCE(NEW.rate_code, '') || ' ' ||
-        COALESCE(NEW.rate_full_name, '') || ' ' ||
-        COALESCE(NEW.rate_short_name, '') || ' ' ||
-        COALESCE(NEW.category, '') || ' ' ||
-        COALESCE(NEW.composition, '')
+        NEW.search_text
     );
 END;
 
 -- ============================================================================
 -- TRIGGER: rates_fts_update
 -- Description: Automatically update FTS index when rate is modified
+-- Note: search_text should be updated before calling UPDATE
 -- ============================================================================
 CREATE TRIGGER IF NOT EXISTS rates_fts_update AFTER UPDATE ON rates BEGIN
-    -- Update search_text with concatenated searchable fields
-    UPDATE rates SET
-        search_text =
-            COALESCE(NEW.rate_code, '') || ' ' ||
-            COALESCE(NEW.rate_full_name, '') || ' ' ||
-            COALESCE(NEW.rate_short_name, '') || ' ' ||
-            COALESCE(NEW.category, '') || ' ' ||
-            COALESCE(NEW.composition, ''),
-        updated_at = datetime('now')
-    WHERE rate_code = NEW.rate_code;
+    -- Update timestamp
+    UPDATE rates SET updated_at = datetime('now')
+    WHERE rate_code = NEW.rate_code AND updated_at != datetime('now');
 
-    -- Update FTS index
+    -- Update FTS index with new values
     UPDATE rates_fts
     SET
         rate_code = NEW.rate_code,
         rate_full_name = NEW.rate_full_name,
         rate_short_name = NEW.rate_short_name,
         category = NEW.category,
-        search_text =
-            COALESCE(NEW.rate_code, '') || ' ' ||
-            COALESCE(NEW.rate_full_name, '') || ' ' ||
-            COALESCE(NEW.rate_short_name, '') || ' ' ||
-            COALESCE(NEW.category, '') || ' ' ||
-            COALESCE(NEW.composition, '')
+        search_text = NEW.search_text
     WHERE rowid = NEW.rowid;
 END;
 

@@ -420,6 +420,7 @@ class DatabasePopulator:
         - NaN to None conversion for SQLite NULL
         - Default values for missing columns
         - JSON composition validation
+        - search_text computation if not provided (required for FTS triggers)
 
         Args:
             rates_df: Source DataFrame from DataAggregator
@@ -430,19 +431,39 @@ class DatabasePopulator:
         data_list = []
 
         for _, row in rates_df.iterrows():
-            # Extract and map fields with schema names
+            # Extract fields
+            rate_code = self._safe_value(row.get('rate_code'))
+            rate_full_name = self._safe_value(row.get('rate_full_name'))
+            rate_short_name = self._safe_value(row.get('rate_short_name'))
+            category = self._safe_value(row.get('section_name'))
+            composition = self._safe_value(row.get('composition'))
+
+            # Compute search_text if not provided (required for FTS trigger)
+            search_text = self._safe_value(row.get('search_text'))
+            if not search_text:
+                # Concatenate all searchable fields
+                parts = [
+                    rate_code or '',
+                    rate_full_name or '',
+                    rate_short_name or '',
+                    category or '',
+                    composition or ''
+                ]
+                search_text = ' '.join(parts).strip()
+
+            # Build rate tuple
             rate_tuple = (
-                self._safe_value(row.get('rate_code')),                    # rate_code
-                self._safe_value(row.get('rate_full_name')),               # rate_full_name
-                self._safe_value(row.get('rate_short_name')),              # rate_short_name
+                rate_code,                                                  # rate_code
+                rate_full_name,                                             # rate_full_name
+                rate_short_name,                                            # rate_short_name
                 self._safe_numeric(row.get('unit_number'), default=1.0),   # unit_quantity
                 self._safe_value(row.get('unit')),                          # unit_type
                 self._safe_numeric(row.get('rate_cost'), default=0.0),     # total_cost
                 self._safe_numeric(row.get('materials_cost'), default=0.0), # materials_cost
                 self._safe_numeric(row.get('resources_cost'), default=0.0), # resources_cost
-                self._safe_value(row.get('section_name')),                  # category
-                self._safe_value(row.get('composition')),                   # composition (JSON)
-                self._safe_value(row.get('search_text'))                    # search_text
+                category,                                                   # category
+                composition,                                                # composition (JSON)
+                search_text                                                 # search_text
             )
             data_list.append(rate_tuple)
 
