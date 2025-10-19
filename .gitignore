@@ -99,7 +99,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-
+.claude/
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -155,3 +155,4 @@ temp/
 # Environment variables
 .env.local
 .env.*.local
+data/cache/query_cache.json
