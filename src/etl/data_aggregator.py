@@ -189,8 +189,24 @@ class DataAggregator:
         section_name = self._safe_str(first_row.get('Раздел | Наименование', ''))
         unit_measure = self._safe_str(first_row.get('Расценка | Ед. изм.', ''))
 
+        # CRITICAL FIX: Ensure rate_full_name is never empty (NOT NULL constraint in schema)
+        # Fallback order: rate_full_name -> rate_short_name -> rate_code
+        if not rate_full_name:
+            if rate_short_name:
+                rate_full_name = rate_short_name
+                logger.debug(f"Rate {rate_code}: Using rate_short_name as fallback for empty rate_full_name")
+            else:
+                rate_full_name = str(rate_code)
+                logger.warning(f"Rate {rate_code}: Using rate_code as fallback for empty rate_full_name")
+
         # Parse unit measure
         unit_number, unit = self._parse_unit_measure(unit_measure)
+
+        # CRITICAL FIX: Ensure unit is never empty (NOT NULL constraint in schema)
+        # Fallback to 'шт' (piece) if no unit found
+        if not unit:
+            unit = 'шт'
+            logger.debug(f"Rate {rate_code}: Using 'шт' as fallback for empty unit")
 
         # Extract composition
         composition = self._extract_composition(group)
@@ -330,12 +346,33 @@ class DataAggregator:
         if pd.isna(rate_code) or pd.isna(resource_code):
             return None
 
+        # Extract base fields
+        resource_name = self._safe_str(row.get('Ресурс | Исходное наименование', ''))
+        resource_short_name = self._safe_str(row.get('Ресурс | Краткое наименование', ''))
+
+        # CRITICAL FIX: Ensure resource_name is never empty (NOT NULL constraint in schema)
+        # Fallback order: resource_name -> resource_short_name -> resource_code
+        if not resource_name:
+            if resource_short_name:
+                resource_name = resource_short_name
+                logger.debug(f"Resource {resource_code}: Using resource_short_name as fallback")
+            else:
+                resource_name = str(resource_code)
+                logger.warning(f"Resource {resource_code}: Using resource_code as fallback")
+
+        # Extract unit (with fallback)
+        unit = self._safe_str(row.get('Ресурс | Ед. изм.', ''))
+        if not unit:
+            unit = 'шт'  # Default fallback for NOT NULL constraint
+            logger.debug(f"Resource {resource_code}: Using 'шт' as fallback for empty unit")
+
         resource_record = {
             'rate_code': str(rate_code),
             'resource_code': str(resource_code),
-            'resource_name': self._safe_str(row.get('Ресурс | Исходное наименование', '')),
-            'resource_short_name': self._safe_str(row.get('Ресурс | Краткое наименование', '')),
-            'row_type': self._safe_str(row.get('Тип строки', ''))
+            'resource_name': resource_name,
+            'resource_short_name': resource_short_name,
+            'row_type': self._safe_str(row.get('Тип строки', '')),
+            'unit': unit
         }
 
         # Add numeric fields
