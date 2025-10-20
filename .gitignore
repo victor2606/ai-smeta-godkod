@@ -134,6 +134,7 @@ Thumbs.db
 data/processed/*.db
 data/processed/*.db-shm
 data/processed/*.db-wal
+data/processed/*.backup*
 *.sqlite
 *.sqlite3
 
@@ -151,6 +152,12 @@ logs/
 tmp/
 temp/
 *.tmp
+
+# Backup files
+*.backup
+*.backup_*
+*backup
+*.p2backup
 
 # Environment variables
 .env.local
