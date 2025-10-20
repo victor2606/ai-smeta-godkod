@@ -219,6 +219,7 @@ def run_integrity_checks(
     1. PRAGMA integrity_check - SQLite internal consistency check
     2. Validates rates count > 0
     3. Validates resources count > 0
+    4. Validates price_statistics count
 
     Args:
         db_manager: DatabaseManager instance with active connection
@@ -229,6 +230,7 @@ def run_integrity_checks(
             - integrity_check: "ok" or error message
             - rates_count: Number of rates in database
             - resources_count: Number of resources in database
+            - price_statistics_count: Number of price statistics in database
             - checks_passed: Boolean indicating all checks passed
 
     Example:
@@ -241,6 +243,7 @@ def run_integrity_checks(
         'integrity_check': None,
         'rates_count': 0,
         'resources_count': 0,
+        'price_statistics_count': 0,
         'checks_passed': False
     }
 
@@ -281,6 +284,17 @@ def run_integrity_checks(
         else:
             logger.info(f"Resources count: {resources_count:,}")
 
+        # 4. Validate price statistics count
+        logger.info("Validating price statistics count")
+        price_stats_result = db_manager.execute_query("SELECT COUNT(*) FROM resource_price_statistics")
+        price_stats_count = price_stats_result[0][0] if price_stats_result else 0
+        results['price_statistics_count'] = price_stats_count
+
+        if price_stats_count == 0:
+            logger.warning("Warning: No price statistics found in database")
+        else:
+            logger.info(f"Price statistics count: {price_stats_count:,}")
+
         # All checks passed
         results['checks_passed'] = True
         logger.info("All integrity checks passed successfully")
@@ -314,6 +328,7 @@ def get_statistics(
     - Total execution time
     - Number of rates loaded
     - Number of resources loaded
+    - Number of price statistics loaded
     - Database file size in MB
 
     Args:
@@ -327,6 +342,7 @@ def get_statistics(
             - execution_time: Total time in seconds
             - rates_count: Number of rates
             - resources_count: Number of resources
+            - price_statistics_count: Number of price statistics
             - db_size_mb: Database file size in megabytes
             - success: Pipeline success status
 
@@ -339,6 +355,7 @@ def get_statistics(
         'execution_time': execution_time,
         'rates_count': 0,
         'resources_count': 0,
+        'price_statistics_count': 0,
         'db_size_mb': 0.0,
         'success': True
     }
@@ -350,6 +367,9 @@ def get_statistics(
 
         resources_result = db_manager.execute_query("SELECT COUNT(*) FROM resources")
         stats['resources_count'] = resources_result[0][0] if resources_result else 0
+
+        price_stats_result = db_manager.execute_query("SELECT COUNT(*) FROM resource_price_statistics")
+        stats['price_statistics_count'] = price_stats_result[0][0] if price_stats_result else 0
 
         # Get database file size
         if db_path.exists():
@@ -515,10 +535,13 @@ Examples:
         logger.info("Step 2: Aggregating rates and resources")
         aggregator = DataAggregator(df)
 
-        # Aggregate rates
+        # Aggregate rates (now returns tuple: rates_df, resources_df, price_statistics_df, resource_mass_df, services_df)
         logger.info("Step 2a: Aggregating rates")
-        rates_df = aggregator.aggregate_rates(df)
+        rates_df, _, price_statistics_df, mass_df, services_df = aggregator.aggregate_rates(df)
         logger.info(f"Aggregated {len(rates_df):,} rates")
+        logger.info(f"Extracted {len(price_statistics_df):,} price statistics records")
+        logger.info(f"Extracted {len(mass_df):,} mass records")
+        logger.info(f"Extracted {len(services_df):,} service records")
 
         # Aggregate resources
         logger.info("Step 2b: Aggregating resources")
@@ -558,6 +581,21 @@ Examples:
             resources_inserted = populator.populate_resources(resources_df)
             logger.info(f"Inserted {resources_inserted:,} resources")
 
+            # PHASE 1: Populate price statistics table
+            logger.info("Step 4c: Populating price statistics table")
+            price_stats_inserted = populator.populate_price_statistics(price_statistics_df)
+            logger.info(f"Inserted {price_stats_inserted:,} price statistics")
+
+            # P2: Populate mass table
+            logger.info("Step 4d: Populating resource_mass table")
+            mass_inserted = populator._populate_resource_mass(mass_df)
+            logger.info(f"Inserted {mass_inserted:,} mass records")
+
+            # P2: Populate services table
+            logger.info("Step 4e: Populating services table")
+            services_inserted = populator._populate_services(services_df)
+            logger.info(f"Inserted {services_inserted:,} service records")
+
             # ================================================================
             # Step 5: Run integrity checks
             # ================================================================
@@ -587,6 +625,7 @@ Examples:
         logger.info(f"Execution time: {stats['execution_time']:.2f}s")
         logger.info(f"Rates loaded: {stats['rates_count']:,}")
         logger.info(f"Resources loaded: {stats['resources_count']:,}")
+        logger.info(f"Price statistics loaded: {stats['price_statistics_count']:,}")
         logger.info(f"Database size: {stats['db_size_mb']:.2f} MB")
         logger.info(f"Database location: {output_path}")
         logger.info("=" * 80)

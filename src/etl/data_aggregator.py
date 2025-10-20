@@ -50,8 +50,10 @@ class DataAggregator:
         self.rates_df: Optional[pd.DataFrame] = None
         self.resources_df: Optional[pd.DataFrame] = None
         self.price_statistics_df: Optional[pd.DataFrame] = None
+        self.resource_mass_df: Optional[pd.DataFrame] = None
+        self.services_df: Optional[pd.DataFrame] = None
 
-    def aggregate_rates(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def aggregate_rates(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """
         Aggregate construction rates from raw Excel data.
 
@@ -67,7 +69,7 @@ class DataAggregator:
             df: Source DataFrame with raw Excel data
 
         Returns:
-            Tuple of (rates_df, resources_df, price_statistics_df)
+            Tuple of (rates_df, resources_df, price_statistics_df, resource_mass_df, services_df)
 
         Raises:
             ValueError: If required columns missing or validation fails
@@ -88,6 +90,8 @@ class DataAggregator:
         # Group by rate code
         grouped = df.groupby('Расценка | Код')
         rates_list = []
+        mass_list = []
+        services_list = []
         price_statistics_list = []
 
         logger.info(f"Processing {len(grouped)} unique rates...")
@@ -99,6 +103,12 @@ class DataAggregator:
                     if rate_record:
                         rates_list.append(rate_record)
 
+                        # P2: Extract mass and services data
+                        mass_data = self._extract_resource_mass_data(group)
+                        mass_list.extend(mass_data)
+                        
+                        service_data = self._extract_service_data(rate_code, group)
+                        services_list.extend(service_data)
                         # Extract price statistics for each resource in this rate
                         for _, row in group.iterrows():
                             if pd.notna(row.get('Ресурс | Код')):
@@ -123,7 +133,14 @@ class DataAggregator:
         self.rates_df = rates_df
         self.price_statistics_df = price_statistics_df
 
-        return rates_df, self.resources_df if self.resources_df is not None else pd.DataFrame(), price_statistics_df
+        # Create DataFrames for P2 tables
+        self.resource_mass_df = pd.DataFrame(mass_list) if mass_list else pd.DataFrame()
+        self.services_df = pd.DataFrame(services_list) if services_list else pd.DataFrame()
+        
+        logger.info(f"Extracted {len(self.resource_mass_df)} mass records")
+        logger.info(f"Extracted {len(self.services_df)} service records")
+        
+        return rates_df, self.resources_df if self.resources_df is not None else pd.DataFrame(), price_statistics_df, self.resource_mass_df, self.services_df
 
     def aggregate_resources(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -625,6 +642,78 @@ class DataAggregator:
             price_stats['total_position_cost'] = 0.0
 
         return price_stats
+
+    def _extract_resource_mass_data(self, group: pd.DataFrame) -> List[Dict[str, Any]]:
+        """
+        Extract mass data from resource rows (Excel columns 64-66).
+        
+        Args:
+            group: DataFrame with all rows for a rate
+            
+        Returns:
+            List of mass records with resource_code, mass_name, mass_value, mass_unit
+        """
+        mass_records = []
+        
+        for _, row in group.iterrows():
+            resource_code = self._safe_str(row.get('Ресурс | Код'))
+            
+            # Skip rows without resource code
+            if not resource_code:
+                continue
+                
+            # Extract mass fields (columns 64-66)
+            mass_name = self._safe_str(row.get('Масса | Имя'))
+            mass_value = self._safe_float(row.get('Масса | Значение'))
+            mass_unit = self._safe_str(row.get('Масса | Ед. изм.'))
+            
+            # Only create record if at least one mass field is populated
+            if mass_name or mass_value is not None or mass_unit:
+                mass_records.append({
+                    'resource_code': resource_code,
+                    'mass_name': mass_name,
+                    'mass_value': mass_value,
+                    'mass_unit': mass_unit
+                })
+        
+        return mass_records
+
+    def _extract_service_data(self, rate_code: str, group: pd.DataFrame) -> List[Dict[str, Any]]:
+        """
+        Extract service data from rate rows (Excel columns 67-72).
+        
+        Args:
+            rate_code: Rate code identifier
+            group: DataFrame with all rows for this rate
+            
+        Returns:
+            List of service records with rate_code and service fields
+        """
+        service_records = []
+        
+        for _, row in group.iterrows():
+            # Extract service fields (columns 67-72)
+            service_category = self._safe_str(row.get('Услуга.Категория'))
+            service_type = self._safe_str(row.get('Услуга.Вид'))
+            service_code = self._safe_str(row.get('Параметры.Услуга.Код'))
+            service_unit = self._safe_str(row.get('Параметры.Услуга.Ед. изм.'))
+            service_name = self._safe_str(row.get('Параметры.Услуга.Наименование'))
+            service_quantity = self._safe_float(row.get('Параметры.Услуга.Кол-во'))
+            
+            # Only create record if at least one service field is populated
+            if any([service_category, service_type, service_code, service_unit, service_name, service_quantity is not None]):
+                service_records.append({
+                    'rate_code': rate_code,
+                    'service_category': service_category,
+                    'service_type': service_type,
+                    'service_code': service_code,
+                    'service_unit': service_unit,
+                    'service_name': service_name,
+                    'service_quantity': service_quantity
+                })
+        
+        return service_records
+
 
     def _validate_rates(self, rates_df: pd.DataFrame) -> None:
         """
