@@ -245,6 +245,34 @@ CREATE TABLE IF NOT EXISTS resources (
     -- Additional specifications or notes
     specifications TEXT,
 
+    -- ========================================================================
+    -- PHASE 1 FIELDS: Machinery and Labor Details (Task 9.1 - 2025-10-19)
+    -- Description: 7 fields for machinery operators' wages and labor hours
+    -- ========================================================================
+    machinist_wage REAL DEFAULT 0,
+    machinist_labor_hours REAL DEFAULT 0,
+    machinist_machine_hours REAL DEFAULT 0,
+    cost_without_wages REAL DEFAULT 0,
+    relocation_included INTEGER DEFAULT 0,
+    personnel_code TEXT,
+    machinist_grade INTEGER,
+
+    -- ========================================================================
+    -- TASK 9.3 FIELDS: Extended Resource Classification (2025-10-20)
+    -- Description: Additional resource parameters and classification
+    -- ========================================================================
+
+    -- P1: Resource quantity parameter (Excel col 24)
+    resource_quantity_parameter TEXT,
+
+    -- P2: Additional section classification (Excel cols 35-36)
+    section2_name TEXT,
+    section3_name TEXT,
+
+    -- P3: Electricity consumption data (Excel cols 43-44)
+    electricity_consumption REAL,
+    electricity_cost REAL,
+
     -- Timestamp fields
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -278,6 +306,19 @@ CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(resource_type);
 -- Composite index for resource cost analysis
 -- Used for: Cost breakdown queries
 CREATE INDEX IF NOT EXISTS idx_resources_costs ON resources(resource_type, unit_cost, total_cost);
+
+-- ============================================================================
+-- NEW INDEXES for Task 9.3 Fields (2025-10-20)
+-- ============================================================================
+
+-- Index on section2_name for classification queries
+CREATE INDEX IF NOT EXISTS idx_resources_section2 ON resources(section2_name);
+
+-- Index on section3_name for classification queries
+CREATE INDEX IF NOT EXISTS idx_resources_section3 ON resources(section3_name);
+
+-- Index on electricity_consumption for filtering powered equipment
+CREATE INDEX IF NOT EXISTS idx_resources_electricity ON resources(electricity_consumption);
 
 -- ============================================================================
 -- TABLE: rate_history
@@ -437,43 +478,9 @@ CREATE INDEX IF NOT EXISTS idx_rates_overhead_profit
     ON rates(overhead_rate, profit_margin);
 
 -- ----------------------------------------------------------------------------
--- Extension: resources table - Machinery and Labor Details
--- Purpose: Store detailed machinery operator costs and work hours
--- Fields:
---   - machinist_wage: Wage cost for machinery operators (Зарплата машиниста)
---   - machinist_labor_hours: Labor hours for machinist (Трудозатраты машиниста, чел.-ч)
---   - machinist_machine_hours: Machine operation hours (Затраты машин и механизмов, маш.-ч)
---   - cost_without_wages: Material/equipment cost excluding labor (Стоимость без ЗП)
---   - relocation_included: Flag indicating if relocation costs are included (1=yes, 0=no)
---   - personnel_code: Personnel classification code (Код персонала)
---   - machinist_grade: Skill grade/rank of the machinist (Разряд машиниста)
+-- Note: Phase 1 fields (machinist_wage, etc.) are now part of CREATE TABLE
+--       resources definition (lines 248-258) and no longer require ALTER TABLE
 -- ----------------------------------------------------------------------------
-ALTER TABLE resources ADD COLUMN machinist_wage REAL DEFAULT 0
-    CHECK (machinist_wage >= 0);
-
-ALTER TABLE resources ADD COLUMN machinist_labor_hours REAL DEFAULT 0
-    CHECK (machinist_labor_hours >= 0);
-
-ALTER TABLE resources ADD COLUMN machinist_machine_hours REAL DEFAULT 0
-    CHECK (machinist_machine_hours >= 0);
-
-ALTER TABLE resources ADD COLUMN cost_without_wages REAL DEFAULT 0
-    CHECK (cost_without_wages >= 0);
-
-ALTER TABLE resources ADD COLUMN relocation_included INTEGER DEFAULT 0
-    CHECK (relocation_included IN (0, 1));
-
-ALTER TABLE resources ADD COLUMN personnel_code TEXT;
-
-ALTER TABLE resources ADD COLUMN machinist_grade INTEGER
-    CHECK (machinist_grade IS NULL OR machinist_grade > 0);
-
--- Indexes for machinery cost analysis queries
-CREATE INDEX IF NOT EXISTS idx_resources_machinist_costs
-    ON resources(machinist_wage, machinist_labor_hours, machinist_machine_hours);
-
-CREATE INDEX IF NOT EXISTS idx_resources_personnel
-    ON resources(personnel_code, machinist_grade);
 
 -- ----------------------------------------------------------------------------
 -- NEW TABLE: resource_price_statistics

@@ -170,8 +170,13 @@ class DatabasePopulator:
             cost_without_wages,
             relocation_included,
             personnel_code,
-            machinist_grade
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            machinist_grade,
+            resource_quantity_parameter,
+            section2_name,
+            section3_name,
+            electricity_consumption,
+            electricity_cost
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     INSERT_PRICE_STATISTICS_SQL = """
@@ -492,25 +497,25 @@ class DatabasePopulator:
     def _populate_resource_mass(self, resource_mass_df: pd.DataFrame) -> int:
         """
         Populate resource_mass table from aggregated DataFrame.
-        
+
         Args:
             resource_mass_df: DataFrame with mass data
-            
+
         Returns:
             Number of records inserted
         """
         if resource_mass_df.empty:
             logger.info("No mass data to populate")
             return 0
-            
+
         logger.info(f"Populating resource_mass table with {len(resource_mass_df)} records...")
-        
+
         # Prepare batch data
         mass_batches = self._prepare_batches(
             resource_mass_df,
             ['resource_code', 'mass_name', 'mass_value', 'mass_unit']
         )
-        
+
         total_inserted = 0
         with tqdm(total=len(resource_mass_df), desc="Inserting mass records") as pbar:
             for batch in mass_batches:
@@ -518,33 +523,33 @@ class DatabasePopulator:
                 batch_size = len(batch)
                 total_inserted += batch_size
                 pbar.update(batch_size)
-        
+
         logger.info(f"Successfully inserted {total_inserted} mass records")
         return total_inserted
 
     def _populate_services(self, services_df: pd.DataFrame) -> int:
         """
         Populate services table from aggregated DataFrame.
-        
+
         Args:
             services_df: DataFrame with service data
-            
+
         Returns:
             Number of records inserted
         """
         if services_df.empty:
             logger.info("No service data to populate")
             return 0
-            
+
         logger.info(f"Populating services table with {len(services_df)} records...")
-        
+
         # Prepare batch data
         service_batches = self._prepare_batches(
             services_df,
             ['rate_code', 'service_category', 'service_type', 'service_code',
              'service_unit', 'service_name', 'service_quantity']
         )
-        
+
         total_inserted = 0
         with tqdm(total=len(services_df), desc="Inserting service records") as pbar:
             for batch in service_batches:
@@ -552,7 +557,7 @@ class DatabasePopulator:
                 batch_size = len(batch)
                 total_inserted += batch_size
                 pbar.update(batch_size)
-        
+
         logger.info(f"Successfully inserted {total_inserted} service records")
         return total_inserted
 
@@ -808,7 +813,18 @@ class DatabasePopulator:
             personnel_code = self._safe_value(row.get('personnel_code'))
             machinist_grade = self._safe_int(row.get('machinist_grade'), default=None)
 
-            # Build resource tuple (16 fields total)
+            # TASK 9.3 P1: Extract resource quantity parameter (TEXT field from col 24)
+            resource_quantity_parameter = self._safe_value(row.get('resource_quantity_parameter'))
+
+            # TASK 9.3 P2: Extract section classification fields (TEXT fields from cols 35-36)
+            section2_name = self._safe_value(row.get('section2_name'))
+            section3_name = self._safe_value(row.get('section3_name'))
+
+            # TASK 9.3 P2: Extract electricity fields (REAL fields from cols 37-38)
+            electricity_consumption = self._safe_numeric(row.get('electricity_consumption'), default=0.0)
+            electricity_cost = self._safe_numeric(row.get('electricity_cost'), default=0.0)
+
+            # Build resource tuple (21 fields total)
             resource_tuple = (
                 self._safe_value(row.get('rate_code')),              # rate_code (FK)
                 self._safe_value(row.get('resource_code')),          # resource_code
@@ -825,7 +841,12 @@ class DatabasePopulator:
                 cost_without_wages,                                   # cost_without_wages (PHASE 1)
                 relocation_included,                                  # relocation_included (PHASE 1)
                 personnel_code,                                       # personnel_code (PHASE 1)
-                machinist_grade                                       # machinist_grade (PHASE 1)
+                machinist_grade,                                      # machinist_grade (PHASE 1)
+                resource_quantity_parameter,                          # resource_quantity_parameter (TASK 9.3 P1)
+                section2_name,                                        # section2_name (TASK 9.3 P2)
+                section3_name,                                        # section3_name (TASK 9.3 P2)
+                electricity_consumption,                              # electricity_consumption (TASK 9.3 P2)
+                electricity_cost                                      # electricity_cost (TASK 9.3 P2)
             )
             data_list.append(resource_tuple)
 

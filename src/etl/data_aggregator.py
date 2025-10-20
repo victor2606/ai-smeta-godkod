@@ -106,7 +106,7 @@ class DataAggregator:
                         # P2: Extract mass and services data
                         mass_data = self._extract_resource_mass_data(group)
                         mass_list.extend(mass_data)
-                        
+
                         service_data = self._extract_service_data(rate_code, group)
                         services_list.extend(service_data)
                         # Extract price statistics for each resource in this rate
@@ -136,10 +136,10 @@ class DataAggregator:
         # Create DataFrames for P2 tables
         self.resource_mass_df = pd.DataFrame(mass_list) if mass_list else pd.DataFrame()
         self.services_df = pd.DataFrame(services_list) if services_list else pd.DataFrame()
-        
+
         logger.info(f"Extracted {len(self.resource_mass_df)} mass records")
         logger.info(f"Extracted {len(self.services_df)} service records")
-        
+
         return rates_df, self.resources_df if self.resources_df is not None else pd.DataFrame(), price_statistics_df, self.resource_mass_df, self.services_df
 
     def aggregate_resources(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -506,6 +506,35 @@ class DataAggregator:
                     except (ValueError, TypeError):
                         logger.debug(f"Could not convert {col_name} to float: {value}")
 
+        # TASK 9.3 P1: Add TEXT field for col 24 (preserves string format from Excel)
+        # TASK 9.3 P2: Add section classification fields (cols 35-36)
+        text_fields = {
+            'resource_quantity_parameter': 'Параметры | Ресурс.Количество',
+            'section2_name': 'Раздел 2 | Имя',
+            'section3_name': 'Раздел 3 | Имя'
+        }
+
+        for field_name, col_name in text_fields.items():
+            if col_name in row.index:
+                value = self._safe_str(row.get(col_name))
+                if value:
+                    resource_record[field_name] = value
+
+        # TASK 9.3 P3: Add electricity consumption fields (cols 43-44)
+        electricity_fields = {
+            'electricity_consumption': 'Электроэнергия | Расход, кВт·ч/маш.-ч',
+            'electricity_cost': 'Электроэнергия | Стоимость'
+        }
+
+        for field_name, col_name in electricity_fields.items():
+            if col_name in row.index:
+                value = row.get(col_name)
+                if pd.notna(value):
+                    try:
+                        resource_record[field_name] = float(value)
+                    except (ValueError, TypeError):
+                        logger.debug(f"Could not convert {col_name} to float: {value}")
+
         # PHASE 1: Extract 7 machinery/labor fields
         # Machinist wage
         machinist_wage = self._safe_float(row.get('Цена | Зарплата машиниста'))
@@ -646,27 +675,27 @@ class DataAggregator:
     def _extract_resource_mass_data(self, group: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         Extract mass data from resource rows (Excel columns 64-66).
-        
+
         Args:
             group: DataFrame with all rows for a rate
-            
+
         Returns:
             List of mass records with resource_code, mass_name, mass_value, mass_unit
         """
         mass_records = []
-        
+
         for _, row in group.iterrows():
             resource_code = self._safe_str(row.get('Ресурс | Код'))
-            
+
             # Skip rows without resource code
             if not resource_code:
                 continue
-                
+
             # Extract mass fields (columns 64-66)
             mass_name = self._safe_str(row.get('Масса | Имя'))
             mass_value = self._safe_float(row.get('Масса | Значение'))
             mass_unit = self._safe_str(row.get('Масса | Ед. изм.'))
-            
+
             # Only create record if at least one mass field is populated
             if mass_name or mass_value is not None or mass_unit:
                 mass_records.append({
@@ -675,22 +704,22 @@ class DataAggregator:
                     'mass_value': mass_value,
                     'mass_unit': mass_unit
                 })
-        
+
         return mass_records
 
     def _extract_service_data(self, rate_code: str, group: pd.DataFrame) -> List[Dict[str, Any]]:
         """
         Extract service data from rate rows (Excel columns 67-72).
-        
+
         Args:
             rate_code: Rate code identifier
             group: DataFrame with all rows for this rate
-            
+
         Returns:
             List of service records with rate_code and service fields
         """
         service_records = []
-        
+
         for _, row in group.iterrows():
             # Extract service fields (columns 67-72)
             service_category = self._safe_str(row.get('Услуга.Категория'))
@@ -699,7 +728,7 @@ class DataAggregator:
             service_unit = self._safe_str(row.get('Параметры.Услуга.Ед. изм.'))
             service_name = self._safe_str(row.get('Параметры.Услуга.Наименование'))
             service_quantity = self._safe_float(row.get('Параметры.Услуга.Кол-во'))
-            
+
             # Only create record if at least one service field is populated
             if any([service_category, service_type, service_code, service_unit, service_name, service_quantity is not None]):
                 service_records.append({
@@ -711,7 +740,7 @@ class DataAggregator:
                     'service_name': service_name,
                     'service_quantity': service_quantity
                 })
-        
+
         return service_records
 
 
