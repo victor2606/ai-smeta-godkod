@@ -72,7 +72,7 @@ n8npiplines-bim/
 ```bash
 # Клонировать репозиторий
 git clone <repository-url>
-cd n8npiplines-bim
+cd <repository-folder>
 
 # Создать виртуальное окружение
 python -m venv venv
