@@ -276,6 +276,54 @@ class TestSearch:
 
         assert results[0]['unit_measure_full'] == '100 м3'
 
+    def test_search_ranking(self, search_engine, mock_db_manager, mocker):
+        """Test that search results are ordered by rank (lower is better)."""
+        mocker.patch('src.search.search_engine.prepare_fts_query', return_value='бетон*')
+
+        # Mock results with different ranks (negative values, lower = better match)
+        mock_db_manager.execute_query.return_value = [
+            ('RATE-001', 'Бетон монолитный высокопрочный', 'Бетон ВП', 100, 'м3', 18000.0, -2.5),
+            ('RATE-002', 'Бетон тяжелый', 'Бетон Т', 100, 'м3', 15000.0, -1.0),
+            ('RATE-003', 'Бетон легкий', 'Бетон Л', 100, 'м3', 12000.0, -0.5)
+        ]
+
+        results = search_engine.search('бетон')
+
+        assert len(results) == 3
+        # Verify results are ordered by rank (most relevant first)
+        assert results[0]['rank'] == -2.5  # Best match
+        assert results[1]['rank'] == -1.0  # Medium match
+        assert results[2]['rank'] == -0.5  # Lowest match
+        # Verify all ranks are negative (FTS5 convention)
+        assert all(r['rank'] < 0 for r in results)
+
+    def test_fts_query_preparation(self, search_engine, mock_db_manager, mocker):
+        """Test that FTS queries are correctly formatted through prepare_fts_query()."""
+        from src.database.fts_config import prepare_fts_query
+
+        # Mock the prepare_fts_query to verify it's called
+        mock_prepare = mocker.patch('src.search.search_engine.prepare_fts_query')
+        mock_prepare.return_value = 'устройство* перегородок* (гкл* OR гипсокартон*)'
+
+        mock_db_manager.execute_query.return_value = [
+            ('RATE-001', 'Устройство перегородок из ГКЛ', 'Перегородки', 100, 'м2', 13832.0, -1.5)
+        ]
+
+        # Execute search with natural language query
+        results = search_engine.search('устройство перегородок из гкл')
+
+        # Verify prepare_fts_query was called with original query
+        mock_prepare.assert_called_once_with('устройство перегородок из гкл')
+
+        # Verify the prepared query was used in SQL
+        call_args = mock_db_manager.execute_query.call_args
+        params = call_args[0][1]
+        assert params[0] == 'устройство* перегородок* (гкл* OR гипсокартон*)'
+
+        # Verify results were returned
+        assert len(results) == 1
+        assert results[0]['rate_code'] == 'RATE-001'
+
 
 # ============================================================================
 # Test: search_by_code() method

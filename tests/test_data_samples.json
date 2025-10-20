@@ -1,0 +1,407 @@
+[
+  {
+    "test_id": "1.1",
+    "query_type": "cost_calculation",
+    "user_query": "Сколько будет стоить устройство 150 м² перегородок из ГКЛ с двойным металлическим каркасом?",
+    "expected_rate_code": "10-05-004-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 150,
+    "expected_cost_range": {
+      "min": 367590.19,
+      "max": 377590.19
+    },
+    "notes": "Based on unit cost 250060.96/100 = 2500.6096 per m2, 150*2500.6096 = 375091.44"
+  },
+  {
+    "test_id": "1.2",
+    "query_type": "cost_calculation",
+    "user_query": "Сколько стоит укладка 50 м³ бетона В15 (М200) в сборные блок-ячейки?",
+    "expected_rate_code": "06-22-002-05",
+    "expected_unit_type": "м3",
+    "volume_requested": 50,
+    "expected_cost_range": {
+      "min": 827645.41,
+      "max": 851645.41
+    },
+    "notes": "Based on unit cost 1688744.52/100 = 16887.4452 per m3, 50*16887.4452 = 844372.26"
+  },
+  {
+    "test_id": "1.3",
+    "query_type": "cost_calculation",
+    "user_query": "Рассчитай стоимость устройства кровли из металлочерепицы площадью 200 м²",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 200,
+    "expected_cost_range": {
+      "min": 231648.00,
+      "max": 241648.00
+    },
+    "notes": "Based on unit cost 118504.60/100 = 1185.046 per m2, 200*1185.046 = 237009.20"
+  },
+  {
+    "test_id": "1.4",
+    "query_type": "cost_calculation",
+    "user_query": "Сколько стоит забетонировать 75 м³ железобетонных конструкций автобетононасосом?",
+    "expected_rate_code": "06-22-011-04",
+    "expected_unit_type": "м3",
+    "volume_requested": 75,
+    "expected_cost_range": {
+      "min": 1009621.56,
+      "max": 1049621.56
+    },
+    "notes": "Based on unit cost 1374374.84/100 = 13743.7484 per m3, 75*13743.7484 = 1030781.13"
+  },
+  {
+    "test_id": "1.5",
+    "query_type": "cost_calculation",
+    "user_query": "Какова стоимость гидроизоляции 120 м² пола полимерной мастикой с армированием?",
+    "expected_rate_code": "11-01-004-10",
+    "expected_unit_type": "м2",
+    "volume_requested": 120,
+    "expected_cost_range": {
+      "min": 59583.39,
+      "max": 61583.39
+    },
+    "notes": "Based on unit cost 50754.76/100 = 507.5476 per m2, 120*507.5476 = 60905.71"
+  },
+  {
+    "test_id": "1.6",
+    "query_type": "cost_calculation",
+    "user_query": "Сколько стоит герметизация 80 м коробок окон и балконных дверей мастикой?",
+    "expected_rate_code": "07-05-039-08",
+    "expected_unit_type": "м",
+    "volume_requested": 80,
+    "expected_cost_range": {
+      "min": 13298.40,
+      "max": 13898.40
+    },
+    "notes": "Based on unit cost 17023.39/100 = 170.2339 per m, 80*170.2339 = 13618.71"
+  },
+  {
+    "test_id": "2.1",
+    "query_type": "unit_price",
+    "user_query": "Какая цена за 1 м² устройства перегородок из гипсокартона с двойным каркасом?",
+    "expected_rate_code": "10-05-005-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 1,
+    "expected_cost_range": {
+      "min": 2806.38,
+      "max": 2923.00
+    },
+    "notes": "Based on total cost 286638.20/100 = 2866.382 per m2"
+  },
+  {
+    "test_id": "2.2",
+    "query_type": "unit_price",
+    "user_query": "Сколько стоит 1 м³ укладки бетона В15 в блок-ячейки?",
+    "expected_rate_code": "06-22-002-05",
+    "expected_unit_type": "м3",
+    "volume_requested": 1,
+    "expected_cost_range": {
+      "min": 16549.45,
+      "max": 17226.04
+    },
+    "notes": "Based on total cost 1688744.52/100 = 16887.4452 per m3"
+  },
+  {
+    "test_id": "2.3",
+    "query_type": "unit_price",
+    "user_query": "Какова стоимость 1 м² кровли из металлочерепицы?",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 1,
+    "expected_cost_range": {
+      "min": 1161.35,
+      "max": 1208.74
+    },
+    "notes": "Based on total cost 118504.60/100 = 1185.046 per m2"
+  },
+  {
+    "test_id": "2.4",
+    "query_type": "unit_price",
+    "user_query": "Цена за 1 метр герметизации оконных коробок?",
+    "expected_rate_code": "07-05-039-08",
+    "expected_unit_type": "м",
+    "volume_requested": 1,
+    "expected_cost_range": {
+      "min": 166.83,
+      "max": 173.62
+    },
+    "notes": "Based on total cost 17023.39/100 = 170.2339 per m"
+  },
+  {
+    "test_id": "3.1",
+    "query_type": "rate_breakdown",
+    "user_query": "Разложи расценку 10-05-005-01 на основные составляющие: работа, материалы, машины",
+    "expected_rate_code": "10-05-005-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 100,
+    "expected_cost_range": {
+      "min": 280764.24,
+      "max": 292512.16
+    },
+    "notes": "Total cost 286638.20, should return breakdown by resource types: labor, materials, machinery"
+  },
+  {
+    "test_id": "3.2",
+    "query_type": "rate_breakdown",
+    "user_query": "Покажи детальную разбивку по стоимости для расценки 06-22-011-04 (бетонирование автобетононасосом)",
+    "expected_rate_code": "06-22-011-04",
+    "expected_unit_type": "м3",
+    "volume_requested": 100,
+    "expected_cost_range": {
+      "min": 1346887.34,
+      "max": 1401862.34
+    },
+    "notes": "Total cost 1374374.84, should show top-5 most expensive resources"
+  },
+  {
+    "test_id": "3.3",
+    "query_type": "rate_breakdown",
+    "user_query": "Из чего складывается стоимость расценки 12-01-023-01 (кровля из металлочерепицы)?",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 100,
+    "expected_cost_range": {
+      "min": 116134.51,
+      "max": 120874.69
+    },
+    "notes": "Total cost 118504.60, should show percentage breakdown: materials vs labor vs machinery"
+  },
+  {
+    "test_id": "3.4",
+    "query_type": "rate_breakdown",
+    "user_query": "Какие ресурсы входят в расценку 11-01-004-10 и сколько они стоят?",
+    "expected_rate_code": "11-01-004-10",
+    "expected_unit_type": "м2",
+    "volume_requested": 100,
+    "expected_cost_range": {
+      "min": 49739.66,
+      "max": 51769.86
+    },
+    "notes": "Total cost 50754.76, should list all resources with codes, names, quantities, and costs"
+  },
+  {
+    "test_id": "4.1",
+    "query_type": "comparison",
+    "user_query": "Что дороже: перегородки из ГКЛ с двойным каркасом (10-05-005-01) или перегородки ГКЛ двойной каркас (10-05-004-01)?",
+    "expected_rate_code": "10-05-005-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 100,
+    "expected_cost_range": {
+      "min": 280764.24,
+      "max": 292512.16
+    },
+    "notes": "Compare 10-05-005-01 (286638.20) vs 10-05-004-01 (250060.96), difference = 36577.24 (14.6%)"
+  },
+  {
+    "test_id": "4.2",
+    "query_type": "comparison",
+    "user_query": "Сравни по стоимости кровлю из металлочерепицы (12-01-023-01) для 150 м² с кровлей из металлочерепицы (12-01-023-01)",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 150,
+    "expected_cost_range": {
+      "min": 174201.76,
+      "max": 181312.04
+    },
+    "notes": "Cost for 150 m2: 150*1185.046 = 177756.90"
+  },
+  {
+    "test_id": "4.3",
+    "query_type": "comparison",
+    "user_query": "Что выгоднее для 100 м стыков: герметизация мастикой (07-05-039-08)?",
+    "expected_rate_code": "07-05-039-08",
+    "expected_unit_type": "м",
+    "volume_requested": 100,
+    "expected_cost_range": {
+      "min": 16682.92,
+      "max": 17363.86
+    },
+    "notes": "Cost for 100 m: 100*170.2339 = 17023.39"
+  },
+  {
+    "test_id": "5.1",
+    "query_type": "complex",
+    "user_query": "Мне нужно сделать 180 м² перегородок из ГКЛ. Найди подходящую расценку, рассчитай полную стоимость и покажи из чего она складывается",
+    "expected_rate_code": "10-05-004-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 180,
+    "expected_cost_range": {
+      "min": 440600.85,
+      "max": 458600.85
+    },
+    "notes": "Search + calculate + breakdown. 180*2500.6096 = 450109.73, with detailed resource breakdown"
+  },
+  {
+    "test_id": "5.2",
+    "query_type": "complex",
+    "user_query": "Хочу сделать кровлю на 250 м². Найди доступные варианты и порекомендуй самый выгодный",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 250,
+    "expected_cost_range": {
+      "min": 290200.00,
+      "max": 302200.00
+    },
+    "notes": "Search + compare + recommend. 250*1185.046 = 296261.50, should find multiple roofing options"
+  },
+  {
+    "test_id": "5.3",
+    "query_type": "complex",
+    "user_query": "Рассчитай стоимость: 150 м² перегородок из ГКЛ, 200 м² кровли из металлочерепицы, 100 м герметизации окон",
+    "expected_rate_code": "multiple",
+    "expected_unit_type": "mixed",
+    "volume_requested": null,
+    "expected_cost_range": {
+      "min": 623600.00,
+      "max": 647600.00
+    },
+    "notes": "Multi-item calculation: partitions (375091.44) + roofing (237009.20) + sealing (17023.39) = 629124.03"
+  },
+  {
+    "test_id": "5.4",
+    "query_type": "complex",
+    "user_query": "Сравни, насколько дешевле обойдётся выбор самой бюджетной кровли вместо металлочерепицы для объекта 500 м²",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 500,
+    "expected_cost_range": {
+      "min": 580400.00,
+      "max": 604400.00
+    },
+    "notes": "Search all roofing options + compare + calculate savings. 500*1185.046 = 592523.00"
+  },
+  {
+    "test_id": "6.1",
+    "query_type": "unit_measurement",
+    "user_query": "В каких единицах измеряется расценка 10-05-005-01?",
+    "expected_rate_code": "10-05-005-01",
+    "expected_unit_type": "м2",
+    "volume_requested": null,
+    "expected_cost_range": null,
+    "notes": "Should return unit_measure_full field, expected: '100 м2' or 'м2'"
+  },
+  {
+    "test_id": "6.2",
+    "query_type": "unit_measurement",
+    "user_query": "У меня 15000 квадратных сантиметров перегородок. Сколько это в расценке 10-05-005-01?",
+    "expected_rate_code": "10-05-005-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 1.5,
+    "expected_cost_range": {
+      "min": 4209.57,
+      "max": 4384.50
+    },
+    "notes": "Convert 15000 cm2 = 1.5 m2, then calculate: 1.5*2866.382 = 4299.57"
+  },
+  {
+    "test_id": "7.1",
+    "query_type": "fuzzy_search",
+    "user_query": "Есть что-то про подоконники?",
+    "expected_rate_code": null,
+    "expected_unit_type": null,
+    "volume_requested": null,
+    "expected_cost_range": null,
+    "notes": "FTS5 search for 'подоконники', should find related rates and ask clarifying question"
+  },
+  {
+    "test_id": "7.2",
+    "query_type": "fuzzy_search",
+    "user_query": "Гермитизация окан",
+    "expected_rate_code": "07-05-039-08",
+    "expected_unit_type": "м",
+    "volume_requested": null,
+    "expected_cost_range": null,
+    "notes": "FTS5 should handle typo: 'гермитизация окан' → 'герметизация окон', find 07-05-039-08"
+  },
+  {
+    "test_id": "7.3",
+    "query_type": "fuzzy_search",
+    "user_query": "Сколько стоит ГКЛ перегородки?",
+    "expected_rate_code": "10-05-004-01",
+    "expected_unit_type": "м2",
+    "volume_requested": null,
+    "expected_cost_range": null,
+    "notes": "FTS5 should match synonym: 'ГКЛ' → 'гипсокартонные листы', find partition rates"
+  },
+  {
+    "test_id": "NEG-1",
+    "query_type": "negative_test",
+    "user_query": "Сколько стоит расценка 99-99-999-99?",
+    "expected_rate_code": null,
+    "expected_unit_type": null,
+    "volume_requested": null,
+    "expected_cost_range": null,
+    "notes": "Non-existent rate code, should return error: 'Rate not found'"
+  },
+  {
+    "test_id": "NEG-2",
+    "query_type": "negative_test",
+    "user_query": "Рассчитай стоимость -50 м² перегородок",
+    "expected_rate_code": "10-05-004-01",
+    "expected_unit_type": "м2",
+    "volume_requested": -50,
+    "expected_cost_range": null,
+    "notes": "Negative volume, should return error: 'Volume must be positive'"
+  },
+  {
+    "test_id": "NEG-3",
+    "query_type": "negative_test",
+    "user_query": "Сколько стоит перегородка?",
+    "expected_rate_code": null,
+    "expected_unit_type": null,
+    "volume_requested": null,
+    "expected_cost_range": null,
+    "notes": "Ambiguous query without specifics, should ask clarifying questions: type, volume, etc."
+  },
+  {
+    "test_id": "NEG-4",
+    "query_type": "negative_test",
+    "user_query": "Рассчитай стоимость 0 м² кровли",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 0,
+    "expected_cost_range": null,
+    "notes": "Zero volume, should return error or 0 cost with warning"
+  },
+  {
+    "test_id": "EDGE-1",
+    "query_type": "edge_case",
+    "user_query": "Сколько стоит 0.5 м² перегородок из ГКЛ?",
+    "expected_rate_code": "10-05-004-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 0.5,
+    "expected_cost_range": {
+      "min": 1225.30,
+      "max": 1275.30
+    },
+    "notes": "Fractional volume: 0.5*2500.6096 = 1250.30, should handle decimals correctly"
+  },
+  {
+    "test_id": "EDGE-2",
+    "query_type": "edge_case",
+    "user_query": "Рассчитай стоимость 10000 м² кровли из металлочерепицы",
+    "expected_rate_code": "12-01-023-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 10000,
+    "expected_cost_range": {
+      "min": 11610000.00,
+      "max": 12090000.00
+    },
+    "notes": "Large volume: 10000*1185.046 = 11850460.00, should handle large numbers"
+  },
+  {
+    "test_id": "EDGE-3",
+    "query_type": "edge_case",
+    "user_query": "Какая цена за 1 м² перегородок с двойным каркасом и средним листом?",
+    "expected_rate_code": "10-05-005-01",
+    "expected_unit_type": "м2",
+    "volume_requested": 1,
+    "expected_cost_range": {
+      "min": 2806.38,
+      "max": 2923.00
+    },
+    "notes": "Exact match search with specific description, should find 10-05-005-01"
+  }
+]
