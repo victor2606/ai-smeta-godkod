@@ -1,0 +1,48 @@
+# Docker Compose configuration for MCP Server
+#
+# Quick Start:
+#   1. Build: docker-compose -f docker-compose.mcp.yml build
+#   2. Start: docker-compose -f docker-compose.mcp.yml up -d
+#   3. Verify: docker-compose -f docker-compose.mcp.yml ps
+#   4. Logs: docker-compose -f docker-compose.mcp.yml logs -f mcp-server
+#   5. Access:
+#      - MCP Server: http://localhost:8002
+#
+# Note: N8N connects externally to this MCP server
+#
+# Stop: docker-compose -f docker-compose.mcp.yml down
+
+version: '3.8'
+
+services:
+  # MCP Server - Construction Estimator
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: mcp-server
+    ports:
+      - "8002:8000"   # MCP server SSE endpoint
+      - "8003:8001"   # Health check endpoint
+    volumes:
+      # Mount database as read-only for safety
+      - ./data/processed/estimates.db:/app/data/processed/estimates.db:ro
+      # Mount logs directory for debugging
+      - ./data/logs:/app/data/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+
+networks:
+  mcp-network:
+    driver: bridge
