@@ -452,14 +452,16 @@ class TestExtractKeywordsMethod:
         comparator = RateComparator(temp_database)
 
         keywords = comparator._extract_keywords("бетон работы монтаж")
-        assert keywords == "бетон работы монтаж"
+        # Should use FTS5 formatting with wildcards and AND operators
+        assert keywords == "бетон* AND работы* AND монтаж*"
 
     def test_extract_keywords_extra_whitespace(self, temp_database):
         """Test keyword extraction removes extra whitespace."""
         comparator = RateComparator(temp_database)
 
         keywords = comparator._extract_keywords("  бетон   работы    монтаж  ")
-        assert keywords == "бетон работы монтаж"
+        # Should normalize whitespace and apply FTS5 formatting
+        assert keywords == "бетон* AND работы* AND монтаж*"
 
     def test_extract_keywords_empty_string(self, temp_database):
         """Test keyword extraction with empty string returns wildcard."""
@@ -476,14 +478,14 @@ class TestExtractKeywordsMethod:
         assert keywords == "*"
 
     def test_extract_keywords_long_text_truncated(self, temp_database):
-        """Test keyword extraction truncates very long text to 200 chars."""
+        """Test keyword extraction limits to first 3 keywords."""
         comparator = RateComparator(temp_database)
 
-        long_text = "бетон " * 100  # Very long text
+        long_text = "бетон работы монтаж конструкций устройство перегородок стен"
         keywords = comparator._extract_keywords(long_text)
 
-        # Should be truncated to 200 characters
-        assert len(keywords) == 200
+        # Should limit to first 3 keywords with FTS5 formatting
+        assert keywords == "бетон* AND работы* AND монтаж*"
 
 
 # ============================================================================

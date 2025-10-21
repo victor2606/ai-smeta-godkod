@@ -11,6 +11,7 @@ from typing import List, Optional
 from pathlib import Path
 
 from src.database.db_manager import DatabaseManager
+from src.database.fts_config import prepare_fts_query
 
 
 # Configure logging
@@ -321,21 +322,24 @@ class RateComparator:
 
     def _extract_keywords(self, search_text: Optional[str]) -> str:
         """
-        Extract keywords from search_text for FTS5 query.
+        Extract keywords from search_text for FTS5 similarity query.
 
-        For now, we use the full search_text as is. FTS5 will tokenize it
-        and perform intelligent matching. In the future, this could be enhanced
-        with keyword extraction, stemming, or other NLP techniques.
+        For similarity search, we want to be less restrictive than full-text search.
+        Strategy:
+        1. Normalize and remove stopwords
+        2. Take first 3-5 important keywords (enough to find similar rates, not too restrictive)
+        3. Apply synonym expansion and wildcards
+        4. Use AND to require all keywords (ensures relevance)
 
         Args:
             search_text: Full search text from rate
 
         Returns:
-            FTS5 query string
+            FTS5 query string ready for MATCH clause
 
         Example:
-            >>> query = self._extract_keywords("перегородки гипсокартонные")
-            >>> # Returns: "перегородки гипсокартонные"
+            >>> query = self._extract_keywords("Устройство перегородок гипсокартонных на каркасе...")
+            >>> # Returns: "устройство* AND перегородок* AND (гипсокартон* OR гкл*)"
         """
         if not search_text:
             logger.warning("Empty search_text provided, using wildcard query")
@@ -344,10 +348,22 @@ class RateComparator:
         # Clean up search text: remove extra whitespace
         keywords = ' '.join(search_text.split())
 
-        # Limit query length to avoid overly complex FTS5 queries
-        max_length = 200
-        if len(keywords) > max_length:
-            keywords = keywords[:max_length]
-            logger.debug(f"Truncated search query to {max_length} characters")
+        # Limit to first few words to avoid overly restrictive queries
+        # For similarity search, we want the most important/descriptive terms
+        words = keywords.split()
 
-        return keywords
+        # Take first 2-3 keywords only - this is key for similarity search
+        # Using too many keywords makes the query too restrictive
+        max_keywords = 3
+        if len(words) > max_keywords:
+            keywords = ' '.join(words[:max_keywords])
+            logger.debug(f"Limited similarity search to first {max_keywords} keywords: {keywords[:50]}...")
+
+        # Use prepare_fts_query for proper FTS5 formatting
+        try:
+            fts_query = prepare_fts_query(keywords)
+            return fts_query
+        except ValueError as e:
+            logger.warning(f"Failed to prepare FTS query from search_text: {e}, using cleaned keywords")
+            # Fallback to cleaned keywords if preparation fails
+            return keywords

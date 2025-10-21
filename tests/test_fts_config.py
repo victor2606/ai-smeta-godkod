@@ -170,7 +170,7 @@ class TestExpandSynonyms:
 
     def test_no_synonyms(self):
         """Test text without synonyms."""
-        assert expand_synonyms("монтаж конструкций") == "монтаж конструкций"
+        assert expand_synonyms("монтаж конструкций") == "монтаж AND конструкций"
 
     def test_multiple_synonyms(self):
         """Test text with multiple synonym words."""

@@ -128,8 +128,10 @@ def add_wildcards(text: str, min_word_length: int = 3) -> str:
     Only adds wildcards to words that are at least min_word_length characters long.
     This prevents overly broad matching on short words.
 
+    Handles OR clauses by adding wildcards inside parentheses.
+
     Args:
-        text: Input text with space-separated words
+        text: Input text with space-separated words (may contain OR clauses in parentheses)
         min_word_length: Minimum word length to receive wildcard (default: 3)
 
     Returns:
@@ -142,17 +144,61 @@ def add_wildcards(text: str, min_word_length: int = 3) -> str:
         'устройство* из гкл*'
         >>> add_wildcards("а в с монтаж", min_word_length=3)
         'а в с монтаж*'
+        >>> add_wildcards("(гкл OR гипсокартон)")
+        '(гкл* OR гипсокартон*)'
     """
     if not text:
         return ""
 
-    words = text.split()
-    wildcard_words = [
-        f"{word}*" if len(word) >= min_word_length else word
-        for word in words
-    ]
+    # Handle text with AND operators and OR clauses in parentheses
+    # Strategy: Process token by token, preserving AND/OR operators and handling parentheses
 
-    result = ' '.join(wildcard_words)
+    result_tokens = []
+    i = 0
+    tokens = text.split()
+
+    while i < len(tokens):
+        token = tokens[i]
+
+        # Check if this is an FTS5 operator
+        if token.upper() in ('AND', 'OR', 'NOT'):
+            result_tokens.append(token)
+            i += 1
+            continue
+
+        # Check if token starts with '(' - it's an OR clause
+        if token.startswith('('):
+            # Collect all tokens until we find the closing ')'
+            clause_tokens = [token]
+            i += 1
+            while i < len(tokens) and not clause_tokens[-1].endswith(')'):
+                clause_tokens.append(tokens[i])
+                i += 1
+
+            # Join the clause and process it
+            clause = ' '.join(clause_tokens)
+            # Remove outer parentheses
+            inner = clause[1:-1] if clause.startswith('(') and clause.endswith(')') else clause
+            # Process words inside, preserving OR
+            inner_words = inner.split()
+            processed_inner = []
+            for w in inner_words:
+                if w.upper() in ('OR', 'AND', 'NOT'):
+                    processed_inner.append(w)
+                elif len(w) >= min_word_length:
+                    processed_inner.append(f"{w}*")
+                else:
+                    processed_inner.append(w)
+            result_tokens.append(f"({' '.join(processed_inner)})")
+        else:
+            # Regular word - add wildcard if long enough
+            if len(token) >= min_word_length:
+                result_tokens.append(f"{token}*")
+            else:
+                result_tokens.append(token)
+            i += 1
+
+    result = ' '.join(result_tokens)
 
     logger.debug(f"Added wildcards: '{text}' -> '{result}'")
     return result
@@ -165,20 +211,22 @@ def expand_synonyms(text: str, synonym_map: Dict[str, List[str]] = SYNONYMS) -> 
     For each word that has synonyms, creates an OR clause:
     "word" becomes "(word OR synonym1 OR synonym2)"
 
+    FTS5 requires explicit AND operators when combining regular words with OR clauses.
+
     Args:
         text: Input text with space-separated words
         synonym_map: Dictionary mapping words to their synonyms
 
     Returns:
-        Text with synonyms expanded using OR clauses
+        Text with synonyms expanded using OR clauses, joined with AND operators
 
     Examples:
         >>> expand_synonyms("перегородки гкл 150")
-        'перегородки (гкл OR гипсокартон) 150'
+        'перегородки AND (гкл OR гипсокартон) AND 150'
         >>> expand_synonyms("площадь м2")
-        'площадь (м2 OR квадратный OR метр OR кв OR метр OR кв OR м)'
+        'площадь AND (м2 OR квадратный OR метр OR кв OR метр OR кв OR м)'
         >>> expand_synonyms("объем м3")
-        'объем (м3 OR кубический OR метр OR куб OR метр OR куб OR м)'
+        'объем AND (м3 OR кубический OR метр OR куб OR метр OR куб OR м)'
     """
     if not text:
         return ""
@@ -187,18 +235,25 @@ def expand_synonyms(text: str, synonym_map: Dict[str, List[str]] = SYNONYMS) -> 
     expanded_words = []
 
     for word in words:
-        if word in synonym_map:
+        # Strip wildcard for synonym lookup
+        has_wildcard = word.endswith('*')
+        clean_word = word[:-1] if has_wildcard else word
+
+        if clean_word in synonym_map:
             # Create OR clause: (word OR synonym1 OR synonym2 ...)
-            synonyms = synonym_map[word]
-            # Flatten multi-word synonyms into individual words
-            all_variants = [word] + synonyms
+            synonyms = synonym_map[clean_word]
+            # Re-add wildcards to all variants
+            all_variants = [word]  # Keep original with wildcard
+            for syn in synonyms:
+                all_variants.append(f"{syn}*" if has_wildcard else syn)
             synonym_clause = f"({' OR '.join(all_variants)})"
             expanded_words.append(synonym_clause)
             logger.debug(f"Expanded synonym: '{word}' -> '{synonym_clause}'")
         else:
             expanded_words.append(word)
 
-    result = ' '.join(expanded_words)
+    # Join with AND operator for FTS5 compatibility
+    result = ' AND '.join(expanded_words)
 
     logger.debug(f"Synonym expansion: '{text}' -> '{result}'")
     return result
@@ -256,11 +311,11 @@ def prepare_fts_query(user_query: str) -> str:
         logger.warning("Query contains only stopwords, using normalized version")
         without_stopwords = normalized
 
-    # Step 3: Expand synonyms
-    with_synonyms = expand_synonyms(without_stopwords)
+    # Step 3: Add wildcards (BEFORE synonym expansion)
+    with_wildcards = add_wildcards(without_stopwords, min_word_length=3)
 
-    # Step 4: Add wildcards
-    final_query = add_wildcards(with_synonyms, min_word_length=3)
+    # Step 4: Expand synonyms (AFTER wildcards, so synonyms get wildcards too)
+    final_query = expand_synonyms(with_wildcards)
 
     logger.info(f"Final FTS query: '{final_query}'")
 
