@@ -1,0 +1,180 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/construction-estimator-mcp
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Verify database files are NOT in build context
+        run: |
+          echo "Checking that data files are excluded from build..."
+          if [ -f data/processed/estimates.db ]; then
+            echo "⚠️  WARNING: Database file exists locally but will be excluded by .dockerignore"
+          fi
+
+          echo "Contents of .dockerignore (data exclusions):"
+          grep -A 10 "CRITICAL: Exclude database" .dockerignore || echo "Pattern not found"
+
+      - name: Build Docker image (test build)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: test-build:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image does NOT contain database
+        run: |
+          docker run --rm test-build:latest sh -c "
+            if [ -f /app/data/processed/estimates.db ]; then
+              echo '❌ ERROR: Database file found in image! Build failed.'
+              exit 1
+            else
+              echo '✅ SUCCESS: Database file correctly excluded from image'
+            fi
+
+            # Verify directory structure exists
+            if [ ! -d /app/data/processed ]; then
+              echo '❌ ERROR: data/processed directory missing'
+              exit 1
+            fi
+
+            echo '✅ Directory structure verified'
+            ls -la /app/data/ || true
+          "
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate artifact attestation
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.meta.outputs.digest }}
+          push-to-registry: true
+
+      - name: Output image details
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "### Docker Image Published 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔐 Database File Requirements" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **IMPORTANT:** Database file is NOT included in this image." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Users must mount \`estimates.db\` as a volume:" >> $GITHUB_STEP_SUMMARY
+          echo '```yaml' >> $GITHUB_STEP_SUMMARY
+          echo "volumes:" >> $GITHUB_STEP_SUMMARY
+          echo "  - ./data/processed/estimates.db:/app/data/processed/estimates.db:ro" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md) for details." >> $GITHUB_STEP_SUMMARY
+
+      - name: Create release (on tag push)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          body: |
+            ## MCP Server Release ${{ github.ref_name }}
+
+            ### Docker Image
+
+            ```bash
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ```
+
+            ### ⚠️ Important: Database Required
+
+            This image does NOT include the database file. You must:
+
+            1. Obtain `estimates.db` separately (contact project admin)
+            2. Mount it as a volume when running the container
+
+            See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for full instructions.
+
+            ### Quick Start
+
+            ```bash
+            # 1. Create directory structure
+            mkdir -p construction-estimator/data/processed
+
+            # 2. Place your estimates.db file
+            cp estimates.db construction-estimator/data/processed/
+
+            # 3. Run container
+            docker run -d \
+              --name mcp-server \
+              -p 8002:8000 \
+              -v $(pwd)/construction-estimator/data/processed/estimates.db:/app/data/processed/estimates.db:ro \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+
+            # 4. Verify
+            curl http://localhost:8002/health
+            ```
+
+            ### Changes
+
+            See [commits](${{ github.event.repository.html_url }}/compare/${{ github.event.before }}...${{ github.event.after }})
+          generate_release_notes: true

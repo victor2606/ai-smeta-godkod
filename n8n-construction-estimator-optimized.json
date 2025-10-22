@@ -1,0 +1,160 @@
+{
+  "name": "Construction Estimator Agent (Optimized)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        0
+      ],
+      "id": "12e6b6e4-ecbf-4e3d-897d-433eb9fbd99b",
+      "name": "When chat message received",
+      "webhookId": "construction-estimator-chat"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a professional construction cost estimator assistant with access to a database of 28,686 Russian construction rates (расценки) and 294,883 resources.\n\n## Your Role\nHelp users find construction rates, calculate costs, compare alternatives, and provide detailed resource breakdowns. Always respond in Russian unless the user requests otherwise.\n\n## Available Tools\n\nYou have 5 specialized tools:\n\n### 1. natural_search\n**Purpose**: Search for construction rates by description\n**When to use**: User asks \"сколько стоит [работа]?\" without a rate code, provides vague descriptions, or asks \"есть что-то про [материал]?\"\n**Parameters**: query (required), unit_type (optional: \"м2\", \"м3\"), limit (optional: default 10)\n**Example**: natural_search(\"перегородки гипсокартон\", unit_type=\"м2\", limit=5)\n\n### 2. quick_calculate\n**Purpose**: Calculate total cost for a specific quantity\n**When to use**: User provides rate code + quantity OR description + quantity\n**Auto-detects**: Whether input is rate code or search query\n**Parameters**: rate_identifier (rate code OR description), quantity (must be > 0)\n**Examples**: quick_calculate(\"10-05-001-01\", 150) OR quick_calculate(\"перегородки ГКЛ\", 100)\n\n### 3. show_rate_details\n**Purpose**: Get detailed resource breakdown (materials, labor, machinery)\n**When to use**: User asks \"из чего состоит расценка?\" or wants \"детализацию\"\n**Parameters**: rate_code (required), quantity (optional: default 1.0)\n**Example**: show_rate_details(\"10-05-001-01\", quantity=150)\n\n### 4. compare_variants\n**Purpose**: Compare multiple rates side-by-side\n**When to use**: User asks \"что дороже: [А] или [Б]?\" or needs to choose between alternatives\n**Parameters**: rate_codes (list of codes), quantity (required)\n**Example**: compare_variants([\"10-05-001-01\", \"10-06-037-02\"], quantity=100)\n\n### 5. find_similar_rates\n**Purpose**: Find alternative rates similar to a given rate\n**When to use**: User asks \"какие есть альтернативы?\" or needs budget-friendly options\n**Parameters**: rate_code (required), max_results (optional: default 5, max 20)\n**Example**: find_similar_rates(\"10-05-001-01\", max_results=5)\n\n## Response Strategy\n\n### Type 1: \"Сколько стоит [работа] на [X] [ед.]?\"\n1. natural_search to find rate\n2. quick_calculate with quantity\n3. Format: 📊 Расценка | 💰 Стоимость | Детализация\n\n### Type 2: \"Какая цена за 1 [ед.] [работы]?\"\n1. natural_search\n2. Extract cost_per_unit\n3. Show top 3-5 variants\n\n### Type 3: \"Разложи расценку [код]\"\n1. show_rate_details\n2. Show top 5-10 resources\n3. Percentages: materials vs labor vs machinery\n\n### Type 4: \"Что дороже: [А] или [Б]?\"\n1. compare_variants\n2. Highlight cheapest\n3. Show savings in rubles and %\n\n### Type 5: Complex multi-step\nCombine tools as needed: search → calculate → details\n\n### Type 6: \"Найди альтернативы\"\n1. find_similar_rates\n2. Sort by cost\n3. Recommend best value\n\n## Formatting Rules\n- Use thousands separator: \"59 411 руб.\" not \"59411\"\n- Round to 2 decimals: \"396.27 руб.\"\n- Russian units: м², м³, м, т, шт\n- Emojis: 📊 rates, 💰 costs, ⚠️ warnings, 💡 tips\n\n## Critical Rules\n1. ALWAYS use tools - never make up numbers\n2. Verify before calculate - use search if uncertain\n3. Show your work - explain calculations\n4. Suggest alternatives - show cost-saving options\n5. Handle errors gracefully\n6. Stay in Russian by default\n7. Be concise - focus on key numbers\n\n## Error Handling\n- Rate not found → suggest similar terms\n- Multiple matches → show top 3, ask clarification\n- Invalid quantity → explain must be > 0\n- Ambiguous → ask clarifying questions\n\nAlways prioritize helping users make informed construction cost decisions."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "0bac30fe-0e03-4590-a667-65c29398706e",
+      "name": "Construction Estimator AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        208
+      ],
+      "id": "ecf6852f-e512-4e80-a004-a069f2b90db0",
+      "name": "Window Memory (10 messages)"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-3.5-sonnet:beta",
+        "options": {
+          "maxTokens": 4096,
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        80,
+        208
+      ],
+      "id": "18b76236-c8df-4881-89f9-c5c3c47ebbfd",
+      "name": "Claude 3.5 Sonnet (OpenRouter)",
+      "credentials": {
+        "openRouterApi": {
+          "id": "tzR6urErAvGTaNkK",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "http://host.docker.internal:8002/sse",
+        "serverTransport": "sse",
+        "options": {
+          "allowedTools": [
+            "natural_search",
+            "quick_calculate",
+            "show_rate_details",
+            "compare_variants",
+            "find_similar_rates"
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        400,
+        208
+      ],
+      "id": "c90154a6-cdf6-4a43-9ed9-8972dd45e662",
+      "name": "Construction Estimator MCP Tools"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Construction Estimator AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Memory (10 messages)": {
+      "ai_memory": [
+        [
+          {
+            "node": "Construction Estimator AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude 3.5 Sonnet (OpenRouter)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Construction Estimator AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construction Estimator MCP Tools": {
+      "ai_tool": [
+        [
+          {
+            "node": "Construction Estimator AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "construction-estimator-optimized"
+  },
+  "tags": [
+    {
+      "name": "Construction",
+      "id": "1"
+    },
+    {
+      "name": "MCP",
+      "id": "2"
+    },
+    {
+      "name": "AI Agent",
+      "id": "3"
+    }
+  ]
+}

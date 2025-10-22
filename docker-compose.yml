@@ -1,0 +1,60 @@
+# Production Docker Compose for MCP Server
+#
+# IMPORTANT: This file expects the database file to exist locally.
+#
+# Required files (NOT included in Docker image):
+#   - data/processed/estimates.db (28,686 rates, ~150MB)
+#
+# Quick Start:
+#   1. Ensure database exists: ls -lh data/processed/estimates.db
+#   2. Pull image: docker-compose pull
+#   3. Start: docker-compose up -d
+#   4. Verify: docker-compose ps
+#   5. Test: curl http://localhost:8002/health
+#
+# Stop: docker-compose down
+
+version: '3.8'
+
+services:
+  mcp-server:
+    # Use pre-built image from GitHub Container Registry
+    image: ghcr.io/victor2606/construction-estimator-mcp:latest
+
+    container_name: construction-estimator-mcp
+
+    ports:
+      - "8002:8000"   # MCP server SSE endpoint
+      - "8003:8001"   # Health check endpoint
+
+    volumes:
+      # CRITICAL: Mount database file (read-only for safety)
+      # User must have estimates.db file in this location
+      - ./data/processed/estimates.db:/app/data/processed/estimates.db:ro
+
+      # Optional: Mount logs directory for debugging
+      - ./data/logs:/app/data/logs
+
+      # Optional: Mount cache directory for performance
+      - ./data/cache:/app/data/cache
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - DB_PATH=/app/data/processed/estimates.db
+
+    restart: unless-stopped
+
+    networks:
+      - mcp-network
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  mcp-network:
+    driver: bridge

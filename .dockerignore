@@ -41,6 +41,16 @@ docs/
 data/logs/
 *.log
 
+# CRITICAL: Exclude database and Excel files from Docker image
+# These files must be mounted as volumes by the user
+data/processed/estimates.db
+data/processed/estimates_backup_*.db
+data/processed/estimates_test.db*
+data/raw/*.xlsx
+data/raw/*.xls
+data/construction_rates.db*
+data/cache/
+
 # Docker
 Dockerfile*
 docker-compose*.yml
