@@ -1,0 +1,48 @@
+# Docker Compose for ETL Process (Database Generation)
+#
+# Use this when you have Excel files but NO estimates.db database
+#
+# Quick Start:
+#   1. Place Excel files in ./data/raw/
+#   2. Run: docker-compose -f docker-compose-etl.yml up
+#   3. Database will be generated in ./data/processed/estimates.db
+#   4. Use docker-compose.yml for normal MCP server operation
+
+version: '3.8'
+
+services:
+  # ETL Processor - Generates estimates.db from Excel files
+  etl-processor:
+    image: ghcr.io/victor2606/construction-estimator-mcp:latest
+    container_name: construction-etl-processor
+
+    # Override entrypoint to run ETL instead of MCP server
+    entrypoint: ["python3", "-m", "src.etl"]
+
+    volumes:
+      # Mount raw data (Excel files) - read-only
+      - ./data/raw:/app/data/raw:ro
+
+      # Mount output directory for generated database
+      - ./data/processed:/app/data/processed
+
+      # Mount logs directory
+      - ./data/logs:/app/data/logs
+
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+
+    # Do not restart - this is a one-time process
+    restart: "no"
+
+    # Resource limits for large Excel processing
+    mem_limit: 4g
+    cpus: 2
+
+    networks:
+      - etl-network
+
+networks:
+  etl-network:
+    driver: bridge

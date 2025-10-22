@@ -20,14 +20,25 @@ This guide explains how to deploy the MCP server using the public Docker image. 
 # НЕ публикуйте его в общедоступных местах!
 ```
 
-**Option B: Сгенерировать самостоятельно** (если есть исходный Excel файл)
-```bash
-git clone https://github.com/victor2606/n8npiplines-bim.git
-cd n8npiplines-bim
+**Option B: Сгенерировать самостоятельно** (если есть исходные Excel файлы)
 
-# Поместите Excel файл в data/raw/
-# Запустите ETL процесс
-python -m src.etl.excel_to_sqlite
+⚠️ **Важно**: Если у вас есть только Excel файлы, но нет готовой БД, см. полное руководство:
+**[DATABASE_GENERATION_GUIDE.md](./DATABASE_GENERATION_GUIDE.md)**
+
+Краткая версия:
+```bash
+# Поместите Excel файлы в ./data/raw/
+cp /path/to/Construction_Works_*.xlsx ./data/raw/
+
+# Запустите ETL через Docker (рекомендуется)
+docker-compose -f docker-compose-etl.yml up
+
+# Результат: data/processed/estimates.db (~150MB)
+```
+
+Или локально (требует Python 3.10+):
+```bash
+python3 -m src.etl
 
 # Результат: data/processed/estimates.db
 ```
