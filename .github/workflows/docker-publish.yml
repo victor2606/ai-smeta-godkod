@@ -84,7 +84,7 @@ jobs:
 
       - name: Verify image does NOT contain database
         run: |
-          docker run --rm -e TEST_MODE=true test-build:latest sh -c '
+          docker run --rm --entrypoint sh -e TEST_MODE=true test-build:latest -c '
             echo "=== Database Exclusion Check ==="
             if [ -f /app/data/processed/estimates.db ]; then
               echo "❌ ERROR: Database file found in image!"
