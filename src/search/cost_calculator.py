@@ -99,8 +99,8 @@ class CostCalculator:
                 unit_quantity,
                 unit_type,
                 total_cost,
-                materials_cost,
-                resources_cost
+                material_cost,
+                (labor_cost + machine_cost) as resources_cost
             FROM rates
             WHERE rate_code = ?
         """
@@ -119,7 +119,7 @@ class CostCalculator:
                 unit_quantity,
                 unit_type,
                 total_cost,
-                materials_cost,
+                material_cost,
                 resources_cost,
             ) = rows[0]
 
@@ -136,7 +136,7 @@ class CostCalculator:
             # Calculate proportional costs for desired quantity
             multiplier = quantity / unit_quantity
             calculated_total = total_cost * multiplier
-            adjusted_materials = materials_cost * multiplier
+            adjusted_materials = material_cost * multiplier
             adjusted_resources = resources_cost * multiplier
 
             # Build result dictionary

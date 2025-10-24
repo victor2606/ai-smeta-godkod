@@ -36,7 +36,7 @@ class RateComparator:
         >>> alternatives = comparator.find_alternatives('10-05-001-01', max_results=5)
     """
 
-    def __init__(self, db_path: str = 'data/processed/estimates.db'):
+    def __init__(self, db_path: str = "data/processed/estimates.db"):
         """
         Initialize RateComparator with database path.
 
@@ -86,7 +86,7 @@ class RateComparator:
         logger.info(f"Comparing {len(rate_codes)} rates for quantity: {quantity}")
 
         # Build SQL query with placeholders
-        placeholders = ','.join('?' * len(rate_codes))
+        placeholders = ",".join("?" * len(rate_codes))
         sql = f"""
             SELECT
                 rate_code,
@@ -94,8 +94,8 @@ class RateComparator:
                 unit_type,
                 unit_quantity,
                 total_cost,
-                materials_cost,
-                resources_cost
+                material_cost,
+                (labor_cost + machine_cost) as resources_cost
             FROM rates
             WHERE rate_code IN ({placeholders})
         """
@@ -108,48 +108,66 @@ class RateComparator:
         if len(results) != len(rate_codes):
             found_codes = {row[0] for row in results}
             missing_codes = set(rate_codes) - found_codes
-            raise ValueError(f"Rate codes not found in database: {', '.join(missing_codes)}")
+            raise ValueError(
+                f"Rate codes not found in database: {', '.join(missing_codes)}"
+            )
 
         logger.debug(f"Retrieved {len(results)} rates from database")
 
         # Build DataFrame with calculations
         data = []
         for row in results:
-            rate_code, rate_full_name, unit_type, unit_quantity, total_cost, materials_cost, resources_cost = row
+            (
+                rate_code,
+                rate_full_name,
+                unit_type,
+                unit_quantity,
+                total_cost,
+                material_cost,
+                resources_cost,
+            ) = row
 
             # Calculate cost per unit
             cost_per_unit = total_cost / unit_quantity if unit_quantity > 0 else 0
 
             # Calculate totals for specified quantity
             total_for_quantity = cost_per_unit * quantity
-            materials_for_quantity = (materials_cost / unit_quantity) * quantity if unit_quantity > 0 else 0
+            materials_for_quantity = (
+                (material_cost / unit_quantity) * quantity if unit_quantity > 0 else 0
+            )
 
-            data.append({
-                'rate_code': rate_code,
-                'rate_full_name': rate_full_name,
-                'unit_type': unit_type,
-                'cost_per_unit': round(cost_per_unit, 2),
-                'total_for_quantity': round(total_for_quantity, 2),
-                'materials_for_quantity': round(materials_for_quantity, 2)
-            })
+            data.append(
+                {
+                    "rate_code": rate_code,
+                    "rate_full_name": rate_full_name,
+                    "unit_type": unit_type,
+                    "cost_per_unit": round(cost_per_unit, 2),
+                    "total_for_quantity": round(total_for_quantity, 2),
+                    "materials_for_quantity": round(materials_for_quantity, 2),
+                }
+            )
 
         # Create DataFrame
         df = pd.DataFrame(data)
 
         # Sort by total cost
-        df = df.sort_values('total_for_quantity', ascending=True).reset_index(drop=True)
+        df = df.sort_values("total_for_quantity", ascending=True).reset_index(drop=True)
 
         # Calculate difference from cheapest
         if len(df) > 0:
-            min_cost = df['total_for_quantity'].min()
+            min_cost = df["total_for_quantity"].min()
 
-            df['difference_from_cheapest'] = (df['total_for_quantity'] - min_cost).round(2)
+            df["difference_from_cheapest"] = (
+                df["total_for_quantity"] - min_cost
+            ).round(2)
 
             # Calculate percentage difference (avoid division by zero)
             if min_cost > 0:
-                df['difference_percent'] = ((df['total_for_quantity'] - min_cost) / min_cost * 100).round(2)
+                df["difference_percent"] = (
+                    (df["total_for_quantity"] - min_cost) / min_cost * 100
+                ).round(2)
             else:
-                df['difference_percent'] = 0.0
+                df["difference_percent"] = 0.0
 
         logger.info(f"Comparison completed: {len(df)} rates analyzed")
 
@@ -184,7 +202,9 @@ class RateComparator:
         if max_results <= 0:
             raise ValueError(f"max_results must be greater than 0, got: {max_results}")
 
-        logger.info(f"Finding alternatives for rate: {rate_code}, max_results: {max_results}")
+        logger.info(
+            f"Finding alternatives for rate: {rate_code}, max_results: {max_results}"
+        )
 
         with DatabaseManager(self.db_path) as db:
             # Get source rate and its search_text
@@ -195,8 +215,8 @@ class RateComparator:
                     unit_type,
                     unit_quantity,
                     total_cost,
-                    materials_cost,
-                    resources_cost,
+                    material_cost,
+                    (labor_cost + machine_cost) as resources_cost,
                     search_text
                 FROM rates
                 WHERE rate_code = ?
@@ -208,8 +228,16 @@ class RateComparator:
                 raise ValueError(f"Rate code not found in database: {rate_code}")
 
             source_row = source_results[0]
-            (source_code, source_name, source_unit_type, source_unit_quantity,
-             source_total_cost, source_materials_cost, source_resources_cost, search_text) = source_row
+            (
+                source_code,
+                source_name,
+                source_unit_type,
+                source_unit_quantity,
+                source_total_cost,
+                source_material_cost,
+                source_resources_cost,
+                search_text,
+            ) = source_row
 
             logger.debug(f"Source rate: {source_code} - {source_name}")
 
@@ -228,8 +256,8 @@ class RateComparator:
                     r.unit_type,
                     r.unit_quantity,
                     r.total_cost,
-                    r.materials_cost,
-                    r.resources_cost,
+                    r.material_cost,
+                    (r.labor_cost + r.machine_cost) as resources_cost,
                     fts.rank
                 FROM rates r
                 JOIN rates_fts fts ON r.rowid = fts.rowid
@@ -240,8 +268,7 @@ class RateComparator:
             """
 
             alternatives_results = db.execute_query(
-                alternatives_sql,
-                (fts_query, rate_code, max_results)
+                alternatives_sql, (fts_query, rate_code, max_results)
             )
 
             logger.debug(f"Found {len(alternatives_results)} alternative rates")
@@ -250,11 +277,18 @@ class RateComparator:
         if not alternatives_results:
             logger.warning(f"No alternatives found for rate: {rate_code}")
             # Return empty DataFrame with correct schema
-            return pd.DataFrame(columns=[
-                'rate_code', 'rate_full_name', 'unit_type', 'cost_per_unit',
-                'total_for_quantity', 'materials_for_quantity',
-                'difference_from_cheapest', 'difference_percent'
-            ])
+            return pd.DataFrame(
+                columns=[
+                    "rate_code",
+                    "rate_full_name",
+                    "unit_type",
+                    "cost_per_unit",
+                    "total_for_quantity",
+                    "materials_for_quantity",
+                    "difference_from_cheapest",
+                    "difference_percent",
+                ]
+            )
 
         # Build DataFrame with source rate unit_quantity for comparison
         # We'll use source rate's unit_quantity as the comparison quantity
@@ -262,59 +296,85 @@ class RateComparator:
 
         data = []
         for row in alternatives_results:
-            rate_code_alt, rate_full_name, unit_type, unit_quantity, total_cost, materials_cost, resources_cost, rank = row
+            (
+                rate_code_alt,
+                rate_full_name,
+                unit_type,
+                unit_quantity,
+                total_cost,
+                material_cost,
+                resources_cost,
+                rank,
+            ) = row
 
             # Calculate cost per unit
             cost_per_unit = total_cost / unit_quantity if unit_quantity > 0 else 0
 
             # Calculate totals for comparison quantity
             total_for_quantity = cost_per_unit * comparison_quantity
-            materials_for_quantity = (materials_cost / unit_quantity) * comparison_quantity if unit_quantity > 0 else 0
+            materials_for_quantity = (
+                (material_cost / unit_quantity) * comparison_quantity
+                if unit_quantity > 0
+                else 0
+            )
 
-            data.append({
-                'rate_code': rate_code_alt,
-                'rate_full_name': rate_full_name,
-                'unit_type': unit_type,
-                'cost_per_unit': round(cost_per_unit, 2),
-                'total_for_quantity': round(total_for_quantity, 2),
-                'materials_for_quantity': round(materials_for_quantity, 2),
-                'fts_rank': rank
-            })
+            data.append(
+                {
+                    "rate_code": rate_code_alt,
+                    "rate_full_name": rate_full_name,
+                    "unit_type": unit_type,
+                    "cost_per_unit": round(cost_per_unit, 2),
+                    "total_for_quantity": round(total_for_quantity, 2),
+                    "materials_for_quantity": round(materials_for_quantity, 2),
+                    "fts_rank": rank,
+                }
+            )
 
         # Add source rate to comparison for reference
-        source_cost_per_unit = source_total_cost / source_unit_quantity if source_unit_quantity > 0 else 0
+        source_cost_per_unit = (
+            source_total_cost / source_unit_quantity if source_unit_quantity > 0 else 0
+        )
         source_total_for_quantity = source_cost_per_unit * comparison_quantity
-        source_materials_for_quantity = (source_materials_cost / source_unit_quantity) * comparison_quantity if source_unit_quantity > 0 else 0
+        source_materials_for_quantity = (
+            (source_material_cost / source_unit_quantity) * comparison_quantity
+            if source_unit_quantity > 0
+            else 0
+        )
 
-        data.insert(0, {
-            'rate_code': source_code,
-            'rate_full_name': source_name,
-            'unit_type': source_unit_type,
-            'cost_per_unit': round(source_cost_per_unit, 2),
-            'total_for_quantity': round(source_total_for_quantity, 2),
-            'materials_for_quantity': round(source_materials_for_quantity, 2),
-            'fts_rank': 0  # Source rate gets best rank for sorting
-        })
+        data.insert(
+            0,
+            {
+                "rate_code": source_code,
+                "rate_full_name": source_name,
+                "unit_type": source_unit_type,
+                "cost_per_unit": round(source_cost_per_unit, 2),
+                "total_for_quantity": round(source_total_for_quantity, 2),
+                "materials_for_quantity": round(source_materials_for_quantity, 2),
+                "fts_rank": 0,  # Source rate gets best rank for sorting
+            },
+        )
 
         # Create DataFrame
         df = pd.DataFrame(data)
 
         # Sort by total cost
-        df = df.sort_values('total_for_quantity', ascending=True).reset_index(drop=True)
+        df = df.sort_values("total_for_quantity", ascending=True).reset_index(drop=True)
 
         # Calculate difference from cheapest (which might be source or an alternative)
-        min_cost = df['total_for_quantity'].min()
+        min_cost = df["total_for_quantity"].min()
 
-        df['difference_from_cheapest'] = (df['total_for_quantity'] - min_cost).round(2)
+        df["difference_from_cheapest"] = (df["total_for_quantity"] - min_cost).round(2)
 
         # Calculate percentage difference
         if min_cost > 0:
-            df['difference_percent'] = ((df['total_for_quantity'] - min_cost) / min_cost * 100).round(2)
+            df["difference_percent"] = (
+                (df["total_for_quantity"] - min_cost) / min_cost * 100
+            ).round(2)
         else:
-            df['difference_percent'] = 0.0
+            df["difference_percent"] = 0.0
 
         # Drop fts_rank column (internal use only)
-        df = df.drop(columns=['fts_rank'])
+        df = df.drop(columns=["fts_rank"])
 
         logger.info(f"Found {len(df)} alternatives (including source rate)")
 
@@ -346,7 +406,7 @@ class RateComparator:
             return "*"
 
         # Clean up search text: remove extra whitespace
-        keywords = ' '.join(search_text.split())
+        keywords = " ".join(search_text.split())
 
         # Limit to first few words to avoid overly restrictive queries
         # For similarity search, we want the most important/descriptive terms
@@ -356,14 +416,18 @@ class RateComparator:
         # Using too many keywords makes the query too restrictive
         max_keywords = 3
         if len(words) > max_keywords:
-            keywords = ' '.join(words[:max_keywords])
-            logger.debug(f"Limited similarity search to first {max_keywords} keywords: {keywords[:50]}...")
+            keywords = " ".join(words[:max_keywords])
+            logger.debug(
+                f"Limited similarity search to first {max_keywords} keywords: {keywords[:50]}..."
+            )
 
         # Use prepare_fts_query for proper FTS5 formatting
         try:
             fts_query = prepare_fts_query(keywords)
             return fts_query
         except ValueError as e:
-            logger.warning(f"Failed to prepare FTS query from search_text: {e}, using cleaned keywords")
+            logger.warning(
+                f"Failed to prepare FTS query from search_text: {e}, using cleaned keywords"
+            )
             # Fallback to cleaned keywords if preparation fails
             return keywords
