@@ -77,8 +77,18 @@ else:
     rate_comparator = RateComparator(DB_PATH)
     logger.info("RateComparator initialized")
 
-    vector_engine = VectorSearchEngine(db_manager)
-    logger.info("VectorSearchEngine initialized")
+    # Initialize VectorSearchEngine with API key from environment
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        logger.warning("OPENAI_API_KEY not set - vector search will be unavailable")
+        vector_engine = None
+    else:
+        vector_engine = VectorSearchEngine(
+            db_manager=db_manager,
+            api_key=openai_api_key,
+            base_url=os.getenv("OPENAI_BASE_URL"),  # Optional custom endpoint
+        )
+        logger.info("VectorSearchEngine initialized")
 
     logger.info("All services initialized successfully")
 
@@ -676,6 +686,15 @@ def vector_search(
     )
 
     try:
+        # Check if vector search is available
+        if vector_engine is None:
+            error_response = {
+                "error": "Service unavailable",
+                "details": "Vector search is not available. OPENAI_API_KEY environment variable is not set.",
+            }
+            logger.error(f"vector_search error: {error_response['details']}")
+            return safe_json_serialize(error_response)
+
         # Validate inputs
         if not query or not query.strip():
             error_response = {
