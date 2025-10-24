@@ -210,8 +210,9 @@ class VectorSearchEngine:
         # Add filters
         if filters:
             if "unit_type" in filters:
-                sql += " AND unit_type = ?"
-                params.append(filters["unit_type"])
+                # Use LIKE to match unit_type patterns (e.g., "м2" matches "100 м2")
+                sql += " AND unit_type LIKE ?"
+                params.append(f"%{filters['unit_type']}%")
 
             if "min_cost" in filters:
                 sql += " AND (total_cost / unit_quantity) >= ?"

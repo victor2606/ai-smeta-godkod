@@ -736,7 +736,7 @@ def vector_search(
                 {
                     "rate_code": result["rate_code"],
                     "rate_full_name": result["rate_full_name"],
-                    "unit_measure_full": result["unit_measure_full"],
+                    "unit_type": result["unit_type"],
                     "cost_per_unit": format_cost(result["cost_per_unit"]),
                     "total_cost": format_cost(result["total_cost"]),
                     "similarity": round(result["similarity"], 4),
