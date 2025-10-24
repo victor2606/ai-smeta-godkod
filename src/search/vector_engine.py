@@ -15,6 +15,7 @@ import struct
 from typing import List, Dict, Any, Optional
 
 import numpy as np
+import httpx
 from openai import OpenAI
 
 from src.database.db_manager import DatabaseManager
@@ -53,9 +54,23 @@ class VectorSearchEngine:
         # Use explicit base_url, or fallback to OPENAI_BASE_URL env var
         effective_base_url = base_url or os.getenv("OPENAI_BASE_URL")
 
+        # Configure HTTP proxy if specified
+        http_client = None
+        proxy_url = os.getenv("OPENAI_PROXY")  # Format: http://user:pass@host:port
+        if proxy_url:
+            try:
+                http_client = httpx.Client(proxy=proxy_url, timeout=30.0)
+                logger.info(
+                    f"Using HTTP proxy for OpenAI: {proxy_url.split('@')[-1]}"
+                )  # Log without credentials
+            except Exception as e:
+                logger.warning(f"Failed to configure proxy {proxy_url}: {e}")
+                http_client = None
+
         self.client = OpenAI(
             api_key=api_key,
             base_url=effective_base_url,  # None means use OpenAI default
+            http_client=http_client,
         )
 
         # Dimension based on model
