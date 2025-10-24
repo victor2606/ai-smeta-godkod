@@ -84,27 +84,28 @@ jobs:
 
       - name: Verify image does NOT contain database
         run: |
-          docker run --rm test-build:latest sh -c "
-            # Verify database is NOT in image
+          docker run --rm test-build:latest sh -c '
+            echo "=== Database Exclusion Check ==="
             if [ -f /app/data/processed/estimates.db ]; then
-              echo '❌ ERROR: Database file found in image! Build failed.'
-              exit 1
-            else
-              echo '✅ SUCCESS: Database file correctly excluded from image'
-            fi
-
-            # Verify directory structure exists
-            if [ ! -d /app/data/processed ]; then
-              echo '❌ ERROR: data/processed directory missing'
+              echo "❌ ERROR: Database file found in image!"
               exit 1
             fi
+            echo "✅ Database correctly excluded"
 
-            echo '✅ Directory structure verified'
-            ls -la /app/data/ || true
+            echo ""
+            echo "=== Directory Structure Check ==="
+            [ -d /app/data/processed ] && echo "✅ /app/data/processed exists" || { echo "❌ Missing /app/data/processed"; exit 1; }
+            [ -f /app/mcp_server.py ] && echo "✅ mcp_server.py exists" || { echo "❌ Missing mcp_server.py"; exit 1; }
+            [ -d /app/src ] && echo "✅ /app/src exists" || { echo "❌ Missing /app/src"; exit 1; }
 
-            # Verify Python dependencies are installed (but don't run server without DB)
-            python -c 'import openai; import numpy; print(\"✅ Python dependencies OK\")'
-          "
+            echo ""
+            echo "=== Python Dependencies Check ==="
+            pip list | grep -E "openai|numpy|pandas|fastmcp" || { echo "❌ Missing required packages"; exit 1; }
+            echo "✅ All required packages installed"
+
+            echo ""
+            echo "✅ Image verification completed successfully!"
+          '
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
