@@ -28,17 +28,17 @@ class ExcelLoader:
 
     # Required columns that must exist in Excel
     REQUIRED_COLUMNS = [
-        'Расценка | Код',
-        'Расценка | Исходное наименование',
-        'Расценка | Ед. изм.',
-        'Тип строки',
-        'Ресурс | Код',
-        'Ресурс | Стоимость (руб.)',
-        'Прайс | АбстРесурс | Сметная цена текущая_median'
+        "Расценка | Код",
+        "Расценка | Исходное наименование",
+        "Расценка | Ед. изм.",
+        "Тип строки",
+        "Ресурс | Код",
+        "Ресурс | Стоимость (руб.)",
+        "Прайс | АбстРесурс | Сметная цена текущая_median",
     ]
 
     # Columns that cannot have NaN values
-    CRITICAL_COLUMNS = ['Расценка | Код', 'Тип строки']
+    CRITICAL_COLUMNS = ["Расценка | Код", "Тип строки"]
 
     def __init__(self, file_path: str, chunk_size: int = 10000):
         """
@@ -85,15 +85,17 @@ class ExcelLoader:
         wb = load_workbook(self.file_path, read_only=True, data_only=True)
         ws = wb.active
 
-        with open(temp_csv, 'w', newline='', encoding='utf-8') as csvfile:
+        with open(temp_csv, "w", newline="", encoding="utf-8") as csvfile:
             csv_writer = csv.writer(csvfile)
 
             # Progress bar for conversion
             desc = "Converting XLSX"
-            pbar = tqdm(ws.iter_rows(values_only=True),
-                       desc=desc,
-                       total=total_rows + 1,  # +1 for header
-                       unit='rows')
+            pbar = tqdm(
+                ws.iter_rows(values_only=True),
+                desc=desc,
+                total=total_rows + 1,  # +1 for header
+                unit="rows",
+            )
 
             for row in pbar:
                 csv_writer.writerow(row)
@@ -134,7 +136,7 @@ class ExcelLoader:
                 # For small files, use standard pandas read_excel
                 logger.info("Small file - using standard loading")
                 with tqdm(total=1, desc="Loading Excel") as pbar:
-                    self.df = pd.read_excel(self.file_path, engine='openpyxl')
+                    self.df = pd.read_excel(self.file_path, engine="openpyxl")
                     pbar.update(1)
 
             logger.info(f"Loaded {len(self.df)} rows, {len(self.df.columns)} columns")
@@ -151,6 +153,7 @@ class ExcelLoader:
     def _load_large_file(self) -> pd.DataFrame:
         """
         Load large Excel file using CSV conversion and chunked reading.
+        Uses streaming approach to avoid memory issues.
 
         Returns:
             Loaded DataFrame with all rows
@@ -165,33 +168,18 @@ class ExcelLoader:
 
         self._convert_xlsx_to_csv(self._temp_csv_path, total_rows)
 
-        # Step 3: Load CSV in chunks with progress
-        logger.info(f"Loading CSV in chunks of {self.chunk_size:,} rows...")
+        # Step 3: Load CSV in one go with dtypes specified to reduce memory
+        logger.info(f"Loading CSV with optimized dtypes...")
 
-        chunks = []
-        chunk_iterator = pd.read_csv(
-            self._temp_csv_path,
-            chunksize=self.chunk_size,
-            encoding='utf-8',
-            low_memory=False  # Prevent dtype warnings
+        # Use category dtype for repeated strings to save memory
+        dtype_dict = {
+            "Тип строки": "category",
+            "Расценка | Ед. изм.": "category",
+        }
+
+        df = pd.read_csv(
+            self._temp_csv_path, encoding="utf-8", dtype=dtype_dict, low_memory=False
         )
-
-        # Progress bar for reading chunks
-        total_chunks = (total_rows // self.chunk_size) + 1 if total_rows > 0 else None
-        pbar = tqdm(chunk_iterator,
-                   desc="Reading chunks",
-                   total=total_chunks,
-                   unit='chunk')
-
-        for chunk in pbar:
-            chunks.append(chunk)
-            pbar.set_postfix({'rows': len(chunk)})
-
-        pbar.close()
-
-        # Step 4: Concatenate all chunks
-        logger.info(f"Concatenating {len(chunks)} chunks...")
-        df = pd.concat(chunks, ignore_index=True)
 
         logger.info(f"Successfully loaded {len(df):,} rows")
         return df
@@ -224,10 +212,10 @@ class ExcelLoader:
             raise ValueError(f"Missing required columns: {missing}")
 
         # Check data types
-        if not pd.api.types.is_numeric_dtype(self.df['Ресурс | Стоимость (руб.)']):
+        if not pd.api.types.is_numeric_dtype(self.df["Ресурс | Стоимость (руб.)"]):
             logger.warning("Converting 'Ресурс | Стоимость (руб.)' to numeric")
-            self.df['Ресурс | Стоимость (руб.)'] = pd.to_numeric(
-                self.df['Ресурс | Стоимость (руб.)'], errors='coerce'
+            self.df["Ресурс | Стоимость (руб.)"] = pd.to_numeric(
+                self.df["Ресурс | Стоимость (руб.)"], errors="coerce"
             )
 
         # Check critical NaN values
@@ -250,9 +238,9 @@ class ExcelLoader:
             raise ValueError("No data loaded. Call load() first.")
 
         stats = {
-            'total_rows': len(self.df),
-            'unique_rates': self.df['Расценка | Код'].nunique(),
-            'row_types': self.df['Тип строки'].value_counts().to_dict()
+            "total_rows": len(self.df),
+            "unique_rates": self.df["Расценка | Код"].nunique(),
+            "row_types": self.df["Тип строки"].value_counts().to_dict(),
         }
 
         logger.info(f"Statistics: {stats}")

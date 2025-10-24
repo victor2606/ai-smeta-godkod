@@ -113,13 +113,22 @@ class CostCalculator:
                 raise ValueError(f"Rate code '{rate_code}' not found in database")
 
             # Unpack rate data
-            (code, full_name, unit_quantity, unit_type,
-             total_cost, materials_cost, resources_cost) = rows[0]
+            (
+                code,
+                full_name,
+                unit_quantity,
+                unit_type,
+                total_cost,
+                materials_cost,
+                resources_cost,
+            ) = rows[0]
 
             # Validate unit_quantity
             if unit_quantity <= 0:
                 logger.error(f"Invalid unit_quantity in database: {unit_quantity}")
-                raise ValueError(f"Rate '{rate_code}' has invalid unit_quantity: {unit_quantity}")
+                raise ValueError(
+                    f"Rate '{rate_code}' has invalid unit_quantity: {unit_quantity}"
+                )
 
             # Calculate cost per unit
             cost_per_unit = total_cost / unit_quantity
@@ -132,17 +141,17 @@ class CostCalculator:
 
             # Build result dictionary
             result = {
-                'rate_info': {
-                    'rate_code': code,
-                    'rate_full_name': full_name,
-                    'unit_type': unit_type
+                "rate_info": {
+                    "rate_code": code,
+                    "rate_full_name": full_name,
+                    "unit_type": unit_type,
                 },
-                'base_cost': round(total_cost, 2),
-                'cost_per_unit': round(cost_per_unit, 2),
-                'calculated_total': round(calculated_total, 2),
-                'materials': round(adjusted_materials, 2),
-                'resources': round(adjusted_resources, 2),
-                'quantity': quantity
+                "base_cost": round(total_cost, 2),
+                "cost_per_unit": round(cost_per_unit, 2),
+                "calculated_total": round(calculated_total, 2),
+                "materials": round(adjusted_materials, 2),
+                "resources": round(adjusted_resources, 2),
+                "quantity": quantity,
             }
 
             logger.info(
@@ -157,11 +166,7 @@ class CostCalculator:
             logger.error(error_msg)
             raise sqlite3.Error(error_msg) from e
 
-    def get_detailed_breakdown(
-        self,
-        rate_code: str,
-        quantity: float
-    ) -> Dict[str, Any]:
+    def get_detailed_breakdown(self, rate_code: str, quantity: float) -> Dict[str, Any]:
         """
         Get detailed cost breakdown including all resources.
 
@@ -224,32 +229,50 @@ class CostCalculator:
             rate_rows = self.db_manager.execute_query(sql_rate, (rate_code,))
             unit_quantity = rate_rows[0][0]
 
+            # Validate unit_quantity to prevent division by zero
+            if unit_quantity <= 0:
+                logger.error(
+                    f"Invalid unit_quantity in database for rate '{rate_code}': {unit_quantity}"
+                )
+                raise ValueError(
+                    f"Rate '{rate_code}' has invalid unit_quantity: {unit_quantity}"
+                )
+
             # Calculate multiplier for proportional adjustments
             multiplier = quantity / unit_quantity
 
             # Build resource breakdown
             breakdown = []
             for row in rows:
-                (resource_code, resource_name, resource_type,
-                 orig_quantity, unit, unit_cost, total_cost) = row
+                (
+                    resource_code,
+                    resource_name,
+                    resource_type,
+                    orig_quantity,
+                    unit,
+                    unit_cost,
+                    total_cost,
+                ) = row
 
                 # Calculate adjusted values
                 adjusted_quantity = orig_quantity * multiplier
                 adjusted_cost = total_cost * multiplier
 
-                breakdown.append({
-                    'resource_code': resource_code,
-                    'resource_name': resource_name,
-                    'resource_type': resource_type,
-                    'original_quantity': round(orig_quantity, 2),
-                    'adjusted_quantity': round(adjusted_quantity, 2),
-                    'unit': unit,
-                    'unit_cost': round(unit_cost, 2),
-                    'adjusted_cost': round(adjusted_cost, 2)
-                })
+                breakdown.append(
+                    {
+                        "resource_code": resource_code,
+                        "resource_name": resource_name,
+                        "resource_type": resource_type,
+                        "original_quantity": round(orig_quantity, 2),
+                        "adjusted_quantity": round(adjusted_quantity, 2),
+                        "unit": unit,
+                        "unit_cost": round(unit_cost, 2),
+                        "adjusted_cost": round(adjusted_cost, 2),
+                    }
+                )
 
             # Add breakdown to result
-            result['breakdown'] = breakdown
+            result["breakdown"] = breakdown
 
             logger.info(
                 f"Detailed breakdown complete: {rate_code} with "

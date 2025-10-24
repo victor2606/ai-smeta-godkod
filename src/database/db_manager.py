@@ -52,7 +52,9 @@ class DatabaseManager:
 
         logger.info(f"DatabaseManager initialized for: {db_path}")
         if self._is_new_database:
-            logger.info("Database file does not exist - will be created on first connection")
+            logger.info(
+                "Database file does not exist - will be created on first connection"
+            )
 
     def __enter__(self):
         """
@@ -100,6 +102,19 @@ class DatabaseManager:
 
             # Establish connection
             self.connection = sqlite3.connect(self.db_path)
+
+            # Enable extension loading
+            self.connection.enable_load_extension(True)
+
+            # Load sqlite-vec extension
+            try:
+                import sqlite_vec
+
+                sqlite_vec.load(self.connection)
+                logger.info("sqlite-vec extension loaded successfully")
+            except Exception as e:
+                logger.warning(f"Failed to load sqlite-vec extension: {e}")
+
             self.cursor = self.connection.cursor()
 
             logger.info(f"Database connection established: {self.db_path}")
@@ -126,10 +141,10 @@ class DatabaseManager:
         - foreign_keys=ON: Enable foreign key constraints
         """
         pragma_settings = {
-            'journal_mode': 'WAL',
-            'synchronous': 'NORMAL',
-            'cache_size': -64000,  # Negative value = KB (64MB)
-            'foreign_keys': 'ON'
+            "journal_mode": "WAL",
+            "synchronous": "NORMAL",
+            "cache_size": -64000,  # Negative value = KB (64MB)
+            "foreign_keys": "ON",
         }
 
         for pragma, value in pragma_settings.items():
@@ -181,7 +196,7 @@ class DatabaseManager:
         """
         # Determine schema file path relative to this file
         current_dir = Path(__file__).parent
-        schema_path = current_dir / 'schema.sql'
+        schema_path = current_dir / "schema.sql"
 
         if not schema_path.exists():
             error_msg = f"Schema file not found: {schema_path}"
@@ -192,7 +207,7 @@ class DatabaseManager:
             logger.info(f"Reading schema from: {schema_path}")
 
             # Read schema file
-            with open(schema_path, 'r', encoding='utf-8') as f:
+            with open(schema_path, "r", encoding="utf-8") as f:
                 schema_sql = f.read()
 
             logger.info(f"Executing schema (size: {len(schema_sql)} bytes)")
@@ -224,9 +239,7 @@ class DatabaseManager:
             raise
 
     def execute_query(
-        self,
-        sql: str,
-        params: Optional[Tuple[Any, ...]] = None
+        self, sql: str, params: Optional[Tuple[Any, ...]] = None
     ) -> List[Tuple[Any, ...]]:
         """
         Execute a SELECT query and return results.
@@ -270,11 +283,7 @@ class DatabaseManager:
             logger.error(error_msg)
             raise sqlite3.Error(error_msg) from e
 
-    def execute_many(
-        self,
-        sql: str,
-        data_list: List[Tuple[Any, ...]]
-    ) -> int:
+    def execute_many(self, sql: str, data_list: List[Tuple[Any, ...]]) -> int:
         """
         Execute batch INSERT/UPDATE operations with transaction support.
 
@@ -318,11 +327,7 @@ class DatabaseManager:
             self.connection.rollback()
             raise sqlite3.Error(error_msg) from e
 
-    def execute_update(
-        self,
-        sql: str,
-        params: Optional[Tuple[Any, ...]] = None
-    ) -> int:
+    def execute_update(self, sql: str, params: Optional[Tuple[Any, ...]] = None) -> int:
         """
         Execute an INSERT/UPDATE/DELETE statement.
 

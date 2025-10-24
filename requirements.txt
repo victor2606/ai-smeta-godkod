@@ -4,6 +4,11 @@ openpyxl>=3.1.0
 
 # Database
 # sqlite3 - included in Python stdlib
+sqlite-vec>=0.1.1
+
+# Vector embeddings
+sentence-transformers>=2.2.0
+torch>=2.0.0
 
 # Progress bars
 tqdm>=4.65.0

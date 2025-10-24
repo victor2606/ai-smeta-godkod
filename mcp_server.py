@@ -28,12 +28,12 @@ from src.database.db_manager import DatabaseManager
 from src.search.search_engine import SearchEngine
 from src.search.cost_calculator import CostCalculator
 from src.search.rate_comparator import RateComparator
+from src.search.vector_engine import VectorSearchEngine
 
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,9 @@ logger.info("CostCalculator initialized")
 
 rate_comparator = RateComparator(DB_PATH)
 logger.info("RateComparator initialized")
+
+vector_engine = VectorSearchEngine(db_manager)
+logger.info("VectorSearchEngine initialized")
 
 logger.info("All services initialized successfully")
 
@@ -98,7 +101,7 @@ def safe_json_serialize(obj: Any) -> str:
 
     # Convert DataFrame to list of dicts
     if isinstance(obj, pd.DataFrame):
-        obj = obj.replace([np.nan, np.inf, -np.inf], None).to_dict(orient='records')
+        obj = obj.replace([np.nan, np.inf, -np.inf], None).to_dict(orient="records")
 
     # Convert dict values if needed
     if isinstance(obj, dict):
@@ -106,8 +109,12 @@ def safe_json_serialize(obj: Any) -> str:
 
     # Convert list items if needed
     if isinstance(obj, list):
-        obj = [{k: clean_value(v) for k, v in item.items()} if isinstance(item, dict) else item
-               for item in obj]
+        obj = [
+            {k: clean_value(v) for k, v in item.items()}
+            if isinstance(item, dict)
+            else item
+            for item in obj
+        ]
 
     return json.dumps(obj, ensure_ascii=False, indent=2)
 
@@ -145,9 +152,9 @@ def is_rate_code(identifier: str) -> bool:
 
     # Check for typical rate code patterns
     rate_code_patterns = [
-        r'^\d{2}-\d{2}-\d{3}-\d{2}$',  # Pattern like 10-05-001-01
-        r'^[А-Яа-я]+\d{2}-\d{2}',       # Pattern like ГЭСНп81-01
-        r'^\d+-\d+',                     # Any pattern starting with numbers and hyphen
+        r"^\d{2}-\d{2}-\d{3}-\d{2}$",  # Pattern like 10-05-001-01
+        r"^[А-Яа-я]+\d{2}-\d{2}",  # Pattern like ГЭСНп81-01
+        r"^\d+-\d+",  # Any pattern starting with numbers and hyphen
     ]
 
     for pattern in rate_code_patterns:
@@ -155,7 +162,7 @@ def is_rate_code(identifier: str) -> bool:
             return True
 
     # If contains only alphanumeric and hyphens (no spaces), likely a code
-    if re.match(r'^[А-Яа-яA-Za-z0-9\-]+$', identifier) and '-' in identifier:
+    if re.match(r"^[А-Яа-яA-Za-z0-9\-]+$", identifier) and "-" in identifier:
         return True
 
     return False
@@ -186,14 +193,16 @@ def natural_search(query: str, unit_type: str = None, limit: int = 10) -> str:
     Example:
         >>> natural_search("перегородки гипсокартон", unit_type="м2", limit=5)
     """
-    logger.info(f"Tool invoked: natural_search(query='{query}', unit_type={unit_type}, limit={limit})")
+    logger.info(
+        f"Tool invoked: natural_search(query='{query}', unit_type={unit_type}, limit={limit})"
+    )
 
     try:
         # Validate inputs
         if not query or not query.strip():
             error_response = {
                 "error": "Invalid input",
-                "details": "Query cannot be empty"
+                "details": "Query cannot be empty",
             }
             logger.error(f"natural_search error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -204,7 +213,7 @@ def natural_search(query: str, unit_type: str = None, limit: int = 10) -> str:
         # Build filters
         filters = {}
         if unit_type:
-            filters['unit_type'] = unit_type.strip()
+            filters["unit_type"] = unit_type.strip()
 
         # Execute search
         results = search_engine.search(query, filters=filters, limit=limit)
@@ -212,29 +221,28 @@ def natural_search(query: str, unit_type: str = None, limit: int = 10) -> str:
         # Format results for JSON output
         formatted_results = []
         for result in results:
-            formatted_results.append({
-                'rate_code': result['rate_code'],
-                'rate_full_name': result['rate_full_name'],
-                'unit_measure_full': result['unit_measure_full'],
-                'cost_per_unit': format_cost(result['cost_per_unit']),
-                'total_cost': format_cost(result['total_cost']),
-                'rank': result['rank']
-            })
+            formatted_results.append(
+                {
+                    "rate_code": result["rate_code"],
+                    "rate_full_name": result["rate_full_name"],
+                    "unit_measure_full": result["unit_measure_full"],
+                    "cost_per_unit": format_cost(result["cost_per_unit"]),
+                    "total_cost": format_cost(result["total_cost"]),
+                    "rank": result["rank"],
+                }
+            )
 
         response = {
             "success": True,
             "count": len(formatted_results),
-            "results": formatted_results
+            "results": formatted_results,
         }
 
         logger.info(f"natural_search completed: {len(formatted_results)} results found")
         return safe_json_serialize(response)
 
     except Exception as e:
-        error_response = {
-            "error": "Search failed",
-            "details": str(e)
-        }
+        error_response = {"error": "Search failed", "details": str(e)}
         logger.error(f"natural_search error: {str(e)}", exc_info=True)
         return safe_json_serialize(error_response)
 
@@ -266,14 +274,16 @@ def quick_calculate(rate_identifier: str, quantity: float) -> str:
         >>> quick_calculate("10-05-001-01", 150)
         >>> quick_calculate("перегородки гипсокартон", 100)
     """
-    logger.info(f"Tool invoked: quick_calculate(rate_identifier='{rate_identifier}', quantity={quantity})")
+    logger.info(
+        f"Tool invoked: quick_calculate(rate_identifier='{rate_identifier}', quantity={quantity})"
+    )
 
     try:
         # Validate quantity
         if quantity <= 0:
             error_response = {
                 "error": "Invalid input",
-                "details": f"Quantity must be greater than 0, got: {quantity}"
+                "details": f"Quantity must be greater than 0, got: {quantity}",
             }
             logger.error(f"quick_calculate error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -282,7 +292,7 @@ def quick_calculate(rate_identifier: str, quantity: float) -> str:
         if not rate_identifier or not rate_identifier.strip():
             error_response = {
                 "error": "Invalid input",
-                "details": "Rate identifier cannot be empty"
+                "details": "Rate identifier cannot be empty",
             }
             logger.error(f"quick_calculate error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -304,13 +314,13 @@ def quick_calculate(rate_identifier: str, quantity: float) -> str:
             if not search_results:
                 error_response = {
                     "error": "Rate not found",
-                    "details": f"No rates found matching '{rate_identifier}'"
+                    "details": f"No rates found matching '{rate_identifier}'",
                 }
                 logger.error(f"quick_calculate error: {error_response['details']}")
                 return safe_json_serialize(error_response)
 
             # Use the best match
-            rate_code = search_results[0]['rate_code']
+            rate_code = search_results[0]["rate_code"]
             search_used = True
             logger.info(f"Found best match: {rate_code}")
 
@@ -321,30 +331,26 @@ def quick_calculate(rate_identifier: str, quantity: float) -> str:
         response = {
             "success": True,
             "search_used": search_used,
-            "rate_info": result['rate_info'],
-            "cost_per_unit": format_cost(result['cost_per_unit']),
-            "calculated_total": format_cost(result['calculated_total']),
-            "materials": format_cost(result['materials']),
-            "resources": format_cost(result['resources']),
-            "quantity": quantity
+            "rate_info": result["rate_info"],
+            "cost_per_unit": format_cost(result["cost_per_unit"]),
+            "calculated_total": format_cost(result["calculated_total"]),
+            "materials": format_cost(result["materials"]),
+            "resources": format_cost(result["resources"]),
+            "quantity": quantity,
         }
 
-        logger.info(f"quick_calculate completed: {rate_code} x {quantity} = {response['calculated_total']}")
+        logger.info(
+            f"quick_calculate completed: {rate_code} x {quantity} = {response['calculated_total']}"
+        )
         return safe_json_serialize(response)
 
     except ValueError as e:
-        error_response = {
-            "error": "Calculation failed",
-            "details": str(e)
-        }
+        error_response = {"error": "Calculation failed", "details": str(e)}
         logger.error(f"quick_calculate error: {str(e)}")
         return safe_json_serialize(error_response)
 
     except Exception as e:
-        error_response = {
-            "error": "Unexpected error",
-            "details": str(e)
-        }
+        error_response = {"error": "Unexpected error", "details": str(e)}
         logger.error(f"quick_calculate error: {str(e)}", exc_info=True)
         return safe_json_serialize(error_response)
 
@@ -380,14 +386,16 @@ def show_rate_details(rate_code: str, quantity: float = 1.0) -> str:
     Example:
         >>> show_rate_details("10-05-001-01", quantity=150)
     """
-    logger.info(f"Tool invoked: show_rate_details(rate_code='{rate_code}', quantity={quantity})")
+    logger.info(
+        f"Tool invoked: show_rate_details(rate_code='{rate_code}', quantity={quantity})"
+    )
 
     try:
         # Validate inputs
         if not rate_code or not rate_code.strip():
             error_response = {
                 "error": "Invalid input",
-                "details": "Rate code cannot be empty"
+                "details": "Rate code cannot be empty",
             }
             logger.error(f"show_rate_details error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -395,7 +403,7 @@ def show_rate_details(rate_code: str, quantity: float = 1.0) -> str:
         if quantity <= 0:
             error_response = {
                 "error": "Invalid input",
-                "details": f"Quantity must be greater than 0, got: {quantity}"
+                "details": f"Quantity must be greater than 0, got: {quantity}",
             }
             logger.error(f"show_rate_details error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -406,31 +414,27 @@ def show_rate_details(rate_code: str, quantity: float = 1.0) -> str:
         # Format response
         response = {
             "success": True,
-            "rate_info": result['rate_info'],
-            "total_cost": format_cost(result['calculated_total']),
-            "cost_per_unit": format_cost(result['cost_per_unit']),
-            "materials": format_cost(result['materials']),
-            "resources": format_cost(result['resources']),
+            "rate_info": result["rate_info"],
+            "total_cost": format_cost(result["calculated_total"]),
+            "cost_per_unit": format_cost(result["cost_per_unit"]),
+            "materials": format_cost(result["materials"]),
+            "resources": format_cost(result["resources"]),
             "quantity": quantity,
-            "breakdown": result['breakdown']
+            "breakdown": result["breakdown"],
         }
 
-        logger.info(f"show_rate_details completed: {rate_code} with {len(result['breakdown'])} resources")
+        logger.info(
+            f"show_rate_details completed: {rate_code} with {len(result['breakdown'])} resources"
+        )
         return safe_json_serialize(response)
 
     except ValueError as e:
-        error_response = {
-            "error": "Rate not found or invalid",
-            "details": str(e)
-        }
+        error_response = {"error": "Rate not found or invalid", "details": str(e)}
         logger.error(f"show_rate_details error: {str(e)}")
         return safe_json_serialize(error_response)
 
     except Exception as e:
-        error_response = {
-            "error": "Unexpected error",
-            "details": str(e)
-        }
+        error_response = {"error": "Unexpected error", "details": str(e)}
         logger.error(f"show_rate_details error: {str(e)}", exc_info=True)
         return safe_json_serialize(error_response)
 
@@ -463,14 +467,16 @@ def compare_variants(rate_codes: List[str], quantity: float) -> str:
     Example:
         >>> compare_variants(["10-05-001-01", "10-06-037-02"], quantity=100)
     """
-    logger.info(f"Tool invoked: compare_variants(rate_codes={rate_codes}, quantity={quantity})")
+    logger.info(
+        f"Tool invoked: compare_variants(rate_codes={rate_codes}, quantity={quantity})"
+    )
 
     try:
         # Validate inputs
         if not rate_codes or len(rate_codes) == 0:
             error_response = {
                 "error": "Invalid input",
-                "details": "rate_codes list cannot be empty"
+                "details": "rate_codes list cannot be empty",
             }
             logger.error(f"compare_variants error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -478,7 +484,7 @@ def compare_variants(rate_codes: List[str], quantity: float) -> str:
         if quantity <= 0:
             error_response = {
                 "error": "Invalid input",
-                "details": f"Quantity must be greater than 0, got: {quantity}"
+                "details": f"Quantity must be greater than 0, got: {quantity}",
             }
             logger.error(f"compare_variants error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -487,12 +493,17 @@ def compare_variants(rate_codes: List[str], quantity: float) -> str:
         comparison_df = rate_comparator.compare(rate_codes, quantity)
 
         # Convert DataFrame to list of dicts
-        comparison_results = comparison_df.to_dict(orient='records')
+        comparison_results = comparison_df.to_dict(orient="records")
 
         # Format numeric values
         for item in comparison_results:
-            for key in ['cost_per_unit', 'total_for_quantity', 'materials_for_quantity',
-                       'difference_from_cheapest', 'difference_percent']:
+            for key in [
+                "cost_per_unit",
+                "total_for_quantity",
+                "materials_for_quantity",
+                "difference_from_cheapest",
+                "difference_percent",
+            ]:
                 if key in item:
                     item[key] = format_cost(item[key])
 
@@ -500,25 +511,21 @@ def compare_variants(rate_codes: List[str], quantity: float) -> str:
             "success": True,
             "count": len(comparison_results),
             "quantity": quantity,
-            "comparison": comparison_results
+            "comparison": comparison_results,
         }
 
-        logger.info(f"compare_variants completed: {len(comparison_results)} rates compared")
+        logger.info(
+            f"compare_variants completed: {len(comparison_results)} rates compared"
+        )
         return safe_json_serialize(response)
 
     except ValueError as e:
-        error_response = {
-            "error": "Comparison failed",
-            "details": str(e)
-        }
+        error_response = {"error": "Comparison failed", "details": str(e)}
         logger.error(f"compare_variants error: {str(e)}")
         return safe_json_serialize(error_response)
 
     except Exception as e:
-        error_response = {
-            "error": "Unexpected error",
-            "details": str(e)
-        }
+        error_response = {"error": "Unexpected error", "details": str(e)}
         logger.error(f"compare_variants error: {str(e)}", exc_info=True)
         return safe_json_serialize(error_response)
 
@@ -552,14 +559,16 @@ def find_similar_rates(rate_code: str, max_results: int = 5) -> str:
     Example:
         >>> find_similar_rates("10-05-001-01", max_results=5)
     """
-    logger.info(f"Tool invoked: find_similar_rates(rate_code='{rate_code}', max_results={max_results})")
+    logger.info(
+        f"Tool invoked: find_similar_rates(rate_code='{rate_code}', max_results={max_results})"
+    )
 
     try:
         # Validate inputs
         if not rate_code or not rate_code.strip():
             error_response = {
                 "error": "Invalid input",
-                "details": "Rate code cannot be empty"
+                "details": "Rate code cannot be empty",
             }
             logger.error(f"find_similar_rates error: {error_response['details']}")
             return safe_json_serialize(error_response)
@@ -568,15 +577,22 @@ def find_similar_rates(rate_code: str, max_results: int = 5) -> str:
         max_results = min(max(1, max_results), 20)
 
         # Find alternatives
-        alternatives_df = rate_comparator.find_alternatives(rate_code.strip(), max_results=max_results)
+        alternatives_df = rate_comparator.find_alternatives(
+            rate_code.strip(), max_results=max_results
+        )
 
         # Convert DataFrame to list of dicts
-        alternatives_results = alternatives_df.to_dict(orient='records')
+        alternatives_results = alternatives_df.to_dict(orient="records")
 
         # Format numeric values
         for item in alternatives_results:
-            for key in ['cost_per_unit', 'total_for_quantity', 'materials_for_quantity',
-                       'difference_from_cheapest', 'difference_percent']:
+            for key in [
+                "cost_per_unit",
+                "total_for_quantity",
+                "materials_for_quantity",
+                "difference_from_cheapest",
+                "difference_percent",
+            ]:
                 if key in item:
                     item[key] = format_cost(item[key])
 
@@ -584,26 +600,139 @@ def find_similar_rates(rate_code: str, max_results: int = 5) -> str:
             "success": True,
             "source_rate": rate_code.strip(),
             "count": len(alternatives_results),
-            "alternatives": alternatives_results
+            "alternatives": alternatives_results,
         }
 
-        logger.info(f"find_similar_rates completed: {len(alternatives_results)} alternatives found")
+        logger.info(
+            f"find_similar_rates completed: {len(alternatives_results)} alternatives found"
+        )
         return safe_json_serialize(response)
 
     except ValueError as e:
-        error_response = {
-            "error": "Rate not found or invalid",
-            "details": str(e)
-        }
+        error_response = {"error": "Rate not found or invalid", "details": str(e)}
         logger.error(f"find_similar_rates error: {str(e)}")
         return safe_json_serialize(error_response)
 
     except Exception as e:
-        error_response = {
-            "error": "Unexpected error",
-            "details": str(e)
-        }
+        error_response = {"error": "Unexpected error", "details": str(e)}
         logger.error(f"find_similar_rates error: {str(e)}", exc_info=True)
+        return safe_json_serialize(error_response)
+
+
+@mcp.tool()
+def vector_search(
+    query: str,
+    limit: int = 10,
+    unit_type: str = None,
+    similarity_threshold: float = 0.0,
+) -> str:
+    """Search construction rates using semantic vector similarity.
+
+    Performs semantic search using sentence embeddings (BGE-M3 model) to find
+    rates based on meaning rather than exact keyword matching. Complements
+    natural_search for better recall on conceptual queries.
+
+    Args:
+        query: Russian text query describing the desired work or materials
+               (e.g., "утепление стен минеральной ватой", "бетонные работы фундамент")
+        limit: Maximum number of results to return (default: 10, max: 100)
+        unit_type: Optional filter by unit of measurement (e.g., "м2", "м3", "т")
+        similarity_threshold: Minimum cosine similarity score 0-1 (default: 0.0)
+                             Higher values = stricter semantic matching
+
+    Returns:
+        JSON string with list of matching rates containing:
+        - rate_code: Rate identifier
+        - rate_full_name: Full descriptive name
+        - unit_measure_full: Full unit description
+        - cost_per_unit: Cost per single unit
+        - total_cost: Total cost for the rate
+        - similarity: Cosine similarity score (0-1, higher = more similar)
+        - distance: Cosine distance (lower = more similar)
+
+    Example:
+        >>> vector_search("теплоизоляция минвата", limit=5, similarity_threshold=0.7)
+        >>> vector_search("монолитный бетон для фундамента", unit_type="м3")
+
+    Note:
+        - Requires embeddings to be generated first (run generate_embeddings.py)
+        - Best for conceptual/semantic queries; use natural_search for exact keywords
+        - Can be combined with natural_search for hybrid approach
+    """
+    logger.info(
+        f"Tool invoked: vector_search(query='{query}', limit={limit}, unit_type={unit_type}, similarity_threshold={similarity_threshold})"
+    )
+
+    try:
+        # Validate inputs
+        if not query or not query.strip():
+            error_response = {
+                "error": "Invalid input",
+                "details": "Query cannot be empty",
+            }
+            logger.error(f"vector_search error: {error_response['details']}")
+            return safe_json_serialize(error_response)
+
+        # Cap limit at 100
+        limit = min(max(1, limit), 100)
+
+        # Validate similarity threshold
+        if similarity_threshold < 0 or similarity_threshold > 1:
+            error_response = {
+                "error": "Invalid input",
+                "details": f"similarity_threshold must be between 0 and 1, got: {similarity_threshold}",
+            }
+            logger.error(f"vector_search error: {error_response['details']}")
+            return safe_json_serialize(error_response)
+
+        # Build filters
+        filters = {}
+        if unit_type:
+            filters["unit_type"] = unit_type.strip()
+
+        # Execute vector search
+        results = vector_engine.search(
+            query=query.strip(),
+            limit=limit,
+            filters=filters,
+            similarity_threshold=similarity_threshold,
+        )
+
+        # Format results for JSON output
+        formatted_results = []
+        for result in results:
+            formatted_results.append(
+                {
+                    "rate_code": result["rate_code"],
+                    "rate_full_name": result["rate_full_name"],
+                    "unit_measure_full": result["unit_measure_full"],
+                    "cost_per_unit": format_cost(result["cost_per_unit"]),
+                    "total_cost": format_cost(result["total_cost"]),
+                    "similarity": round(result["similarity"], 4),
+                    "distance": round(result["distance"], 4),
+                }
+            )
+
+        response = {
+            "success": True,
+            "count": len(formatted_results),
+            "query": query.strip(),
+            "results": formatted_results,
+            "search_method": "vector_similarity",
+            "model": "BAAI/bge-m3",
+        }
+
+        logger.info(f"vector_search completed: {len(formatted_results)} results found")
+        return safe_json_serialize(response)
+
+    except ValueError as e:
+        error_response = {"error": "Search failed", "details": str(e)}
+        logger.error(f"vector_search error: {str(e)}")
+        return safe_json_serialize(error_response)
+
+    except Exception as e:
+        error_response = {"error": "Unexpected error", "details": str(e)}
+        logger.error(f"vector_search error: {str(e)}", exc_info=True)
         return safe_json_serialize(error_response)
 
 
@@ -612,11 +741,14 @@ if __name__ == "__main__":
     logger.info("Starting MCP server for Construction Estimator...")
     logger.info(f"Server name: {mcp.name}")
     logger.info(f"Database: {DB_PATH}")
-    logger.info(f"Registered tools: natural_search, quick_calculate, show_rate_details, compare_variants, find_similar_rates")
+    logger.info(
+        f"Registered tools: natural_search, quick_calculate, show_rate_details, compare_variants, find_similar_rates"
+    )
 
     # Start health check server in background (for Docker healthcheck)
     try:
         from health_server import start_health_server_background
+
         health_thread = start_health_server_background(port=8001, db_path=DB_PATH)
         logger.info("Health check server started on port 8001")
     except ImportError as e:

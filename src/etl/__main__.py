@@ -1,10 +1,11 @@
 """
 Entry point for ETL process
-Run with: python -m src.etl.excel_to_sqlite
+Run with: python -m src.etl --input <excel_file> --output <db_file>
 """
 
 import sys
 import logging
+import argparse
 from pathlib import Path
 
 # Add project root to path
@@ -18,13 +19,15 @@ from src.etl.db_populator import DatabasePopulator
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('data/logs/etl_{}.log'.format(
-            __import__('datetime').datetime.now().strftime('%Y%m%d_%H%M%S')
-        ))
-    ]
+        logging.FileHandler(
+            "data/logs/etl_{}.log".format(
+                __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+            )
+        ),
+    ],
 )
 
 logger = logging.getLogger(__name__)
@@ -38,13 +41,29 @@ def main():
     3. Populate database
     """
     try:
+        # Parse command line arguments
+        parser = argparse.ArgumentParser(description="ETL Process: Excel → SQLite")
+        parser.add_argument(
+            "--input",
+            type=str,
+            default="data/raw/Сonstruction_Works_Rate_Schedule_17102025_half.xlsx",
+            help="Path to input Excel file",
+        )
+        parser.add_argument(
+            "--output",
+            type=str,
+            default="data/processed/estimates.db",
+            help="Path to output SQLite database",
+        )
+        args = parser.parse_args()
+
         logger.info("=" * 60)
         logger.info("Starting ETL Process: Excel → SQLite")
         logger.info("=" * 60)
 
         # Configuration
-        excel_path = "data/raw/Сonstruction_Works_Rate_Schedule_17102025_half.xlsx"
-        db_path = "data/processed/estimates.db"
+        excel_path = args.input
+        db_path = args.output
 
         # Check if Excel file exists
         if not Path(excel_path).exists():
@@ -67,7 +86,9 @@ def main():
         aggregator = DataAggregator(df)
         rates_df = aggregator.get_rates()
         resources_df = aggregator.get_resources()
-        logger.info(f"Aggregated {len(rates_df):,} rates and {len(resources_df):,} resources")
+        logger.info(
+            f"Aggregated {len(rates_df):,} rates and {len(resources_df):,} resources"
+        )
 
         # Step 3: Populate database
         logger.info("\n[3/3] Populating database...")
@@ -78,6 +99,7 @@ def main():
         logger.info("\n" + "=" * 60)
         logger.info("Verifying database...")
         import sqlite3
+
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
