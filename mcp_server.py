@@ -43,32 +43,44 @@ mcp = FastMCP("Construction Estimator")
 
 
 # Database and service initialization
+import os
+
 DB_PATH = "data/processed/estimates.db"
-logger.info(f"Initializing MCP server with database: {DB_PATH}")
+TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 
-# Verify database exists
-if not Path(DB_PATH).exists():
-    logger.error(f"Database file not found: {DB_PATH}")
-    raise FileNotFoundError(f"Database file not found: {DB_PATH}")
+if TEST_MODE:
+    logger.info("TEST_MODE enabled - skipping database initialization")
+    db_manager = None
+    search_engine = None
+    cost_calculator = None
+    rate_comparator = None
+    vector_engine = None
+else:
+    logger.info(f"Initializing MCP server with database: {DB_PATH}")
 
-# Initialize database manager and services at module level
-db_manager = DatabaseManager(DB_PATH)
-db_manager.connect()
-logger.info("DatabaseManager connected successfully")
+    # Verify database exists
+    if not Path(DB_PATH).exists():
+        logger.error(f"Database file not found: {DB_PATH}")
+        raise FileNotFoundError(f"Database file not found: {DB_PATH}")
 
-search_engine = SearchEngine(db_manager)
-logger.info("SearchEngine initialized")
+    # Initialize database manager and services at module level
+    db_manager = DatabaseManager(DB_PATH)
+    db_manager.connect()
+    logger.info("DatabaseManager connected successfully")
 
-cost_calculator = CostCalculator(db_manager)
-logger.info("CostCalculator initialized")
+    search_engine = SearchEngine(db_manager)
+    logger.info("SearchEngine initialized")
 
-rate_comparator = RateComparator(DB_PATH)
-logger.info("RateComparator initialized")
+    cost_calculator = CostCalculator(db_manager)
+    logger.info("CostCalculator initialized")
 
-vector_engine = VectorSearchEngine(db_manager)
-logger.info("VectorSearchEngine initialized")
+    rate_comparator = RateComparator(DB_PATH)
+    logger.info("RateComparator initialized")
 
-logger.info("All services initialized successfully")
+    vector_engine = VectorSearchEngine(db_manager)
+    logger.info("VectorSearchEngine initialized")
+
+    logger.info("All services initialized successfully")
 
 
 # Utility functions
