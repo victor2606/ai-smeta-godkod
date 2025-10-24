@@ -37,7 +37,10 @@ class SearchEngine:
     """
 
     def __init__(
-        self, db_manager: DatabaseManager, openai_api_key: Optional[str] = None
+        self,
+        db_manager: DatabaseManager,
+        openai_api_key: Optional[str] = None,
+        openai_base_url: Optional[str] = None,
     ):
         """
         Initialize SearchEngine with database manager and optional vector search.
@@ -46,6 +49,8 @@ class SearchEngine:
             db_manager: DatabaseManager instance for database operations
             openai_api_key: Optional OpenAI API key for vector search. If provided,
                           enables semantic vector search in addition to FTS5.
+            openai_base_url: Optional custom OpenAI API base URL. If not provided,
+                           will use OPENAI_BASE_URL environment variable or OpenAI default.
         """
         self.db_manager = db_manager
         self.vector_engine = None
@@ -53,7 +58,7 @@ class SearchEngine:
         if openai_api_key:
             try:
                 self.vector_engine = VectorSearchEngine(
-                    db_manager, api_key=openai_api_key
+                    db_manager, api_key=openai_api_key, base_url=openai_base_url
                 )
                 logger.info("SearchEngine initialized with FTS5 + Vector search")
             except Exception as e:

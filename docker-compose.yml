@@ -14,7 +14,7 @@
 #
 # Stop: docker-compose down
 
-version: '3.8'
+version: "3.8"
 
 services:
   mcp-server:
@@ -24,8 +24,8 @@ services:
     container_name: construction-estimator-mcp
 
     ports:
-      - "8002:8000"   # MCP server SSE endpoint
-      - "8003:8001"   # Health check endpoint
+      - "8002:8000" # MCP server SSE endpoint
+      - "8003:8001" # Health check endpoint
 
     volumes:
       # CRITICAL: Mount database file (read-only for safety)
@@ -43,13 +43,23 @@ services:
       - LOG_LEVEL=INFO
       - DB_PATH=/app/data/processed/estimates.db
 
+      # Optional: OpenAI API configuration for vector search
+      # - OPENAI_API_KEY=your-api-key-here
+      # - OPENAI_BASE_URL=https://api.prode.ai/v1  # For Prode or other OpenAI-compatible services
+
     restart: unless-stopped
 
     networks:
       - mcp-network
 
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

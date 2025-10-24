@@ -10,6 +10,7 @@ Storage: sqlite-vec extension for efficient vector similarity search
 """
 
 import logging
+import os
 import struct
 from typing import List, Dict, Any, Optional
 
@@ -35,6 +36,7 @@ class VectorSearchEngine:
         db_manager: DatabaseManager,
         api_key: str,
         model_name: str = "text-embedding-3-small",
+        base_url: Optional[str] = None,
     ):
         """
         Initialize vector search engine.
@@ -43,10 +45,18 @@ class VectorSearchEngine:
             db_manager: Database manager instance
             api_key: OpenAI API key
             model_name: OpenAI embedding model (default: text-embedding-3-small)
+            base_url: Custom OpenAI API base URL (default: from OPENAI_BASE_URL env or OpenAI default)
         """
         self.db_manager = db_manager
         self.model_name = model_name
-        self.client = OpenAI(api_key=api_key)
+
+        # Use explicit base_url, or fallback to OPENAI_BASE_URL env var
+        effective_base_url = base_url or os.getenv("OPENAI_BASE_URL")
+
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=effective_base_url,  # None means use OpenAI default
+        )
 
         # Dimension based on model
         if "small" in model_name:
