@@ -9,6 +9,8 @@ sqlite-vec>=0.1.1
 # Vector embeddings
 sentence-transformers>=2.2.0
 torch>=2.0.0
+openai>=1.0.0  # For OpenAI API embeddings (text-embedding-3-small)
+numpy>=1.24.0  # Required for vector operations
 
 # Progress bars
 tqdm>=4.65.0
