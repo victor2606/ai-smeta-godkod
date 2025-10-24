@@ -788,10 +788,13 @@ if __name__ == "__main__":
         logger.warning(f"Failed to start health server: {e}")
 
     try:
-        # Run the FastMCP server with SSE transport for HTTP connections
-        # This allows N8N to connect externally via HTTP/SSE
-        logger.info("Starting MCP server with SSE transport on 0.0.0.0:8000")
-        mcp.run(transport="sse", host="0.0.0.0", port=8000)
+        # Get transport from environment (default: http for direct connections)
+        transport = os.getenv("MCP_TRANSPORT", "http").lower()
+        host = os.getenv("HOST", "0.0.0.0")
+        port = int(os.getenv("PORT", "8000"))
+
+        logger.info(f"Starting MCP server with {transport} transport on {host}:{port}")
+        mcp.run(transport=transport, host=host, port=port)
     except KeyboardInterrupt:
         logger.info("Server shutdown requested")
     except Exception as e:
