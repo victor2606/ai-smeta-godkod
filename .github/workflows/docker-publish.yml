@@ -85,6 +85,7 @@ jobs:
       - name: Verify image does NOT contain database
         run: |
           docker run --rm test-build:latest sh -c "
+            # Verify database is NOT in image
             if [ -f /app/data/processed/estimates.db ]; then
               echo '❌ ERROR: Database file found in image! Build failed.'
               exit 1
@@ -100,6 +101,9 @@ jobs:
 
             echo '✅ Directory structure verified'
             ls -la /app/data/ || true
+
+            # Verify Python dependencies are installed (but don't run server without DB)
+            python -c 'import openai; import numpy; print(\"✅ Python dependencies OK\")'
           "
 
       - name: Build and push Docker image
