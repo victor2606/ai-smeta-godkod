@@ -15,9 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
+# Copy requirements and install Python dependencies globally
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime image
 FROM python:3.10-slim
@@ -29,26 +29,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN useradd -m -u 1000 mcpuser && \
-    mkdir -p /app/data/processed /app/data/logs /app/data/raw && \
-    chown -R mcpuser:mcpuser /app
+# Create directories
+RUN mkdir -p /app/data/processed /app/data/logs /app/data/raw
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /home/mcpuser/.local
+# Copy Python dependencies from builder (installed globally)
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code (NO DATA FILES)
-COPY --chown=mcpuser:mcpuser src/ ./src/
-COPY --chown=mcpuser:mcpuser mcp_server.py .
-COPY --chown=mcpuser:mcpuser health_server.py .
-COPY --chown=mcpuser:mcpuser api_server.py .
-COPY --chown=mcpuser:mcpuser --chmod=755 start_both.sh .
+COPY src/ ./src/
+COPY mcp_server.py .
+COPY health_server.py .
+COPY api_server.py .
+COPY --chmod=755 start_both.sh .
 
 # Copy nginx config
 COPY nginx-internal.conf /etc/nginx/nginx.conf
-
-# Set PATH for user-installed packages
-ENV PATH=/home/mcpuser/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
