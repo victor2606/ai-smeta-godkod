@@ -36,6 +36,9 @@ COPY --from=builder /root/.local /home/mcpuser/.local
 COPY --chown=mcpuser:mcpuser src/ ./src/
 COPY --chown=mcpuser:mcpuser mcp_server.py .
 COPY --chown=mcpuser:mcpuser health_server.py .
+COPY --chown=mcpuser:mcpuser api_server.py .
+COPY --chown=mcpuser:mcpuser start_both.sh .
+RUN chmod +x start_both.sh
 
 # Set PATH for user-installed packages
 ENV PATH=/home/mcpuser/.local/bin:$PATH
@@ -48,12 +51,12 @@ ENV DB_PATH=/app/data/processed/estimates.db
 # Switch to non-root user
 USER mcpuser
 
-# Expose ports
-EXPOSE 8000 8001
+# Expose ports (MCP: 8000, Health: 8001, FastAPI: 8002)
+EXPOSE 8000 8001 8002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" || exit 1
 
-# Run MCP server
-ENTRYPOINT ["python", "mcp_server.py"]
+# Run both servers
+ENTRYPOINT ["./start_both.sh"]
