@@ -203,15 +203,13 @@ class CostCalculator:
         result = self.calculate(rate_code, quantity)
 
         # Query resources for this rate
+        # Note: Minimal schema only has resource_code, resource_cost, median_price
+        # Full schema has resource_name, resource_type, quantity, unit, unit_cost, total_cost
         sql = """
             SELECT
                 resource_code,
-                resource_name,
-                resource_type,
-                quantity,
-                unit,
-                unit_cost,
-                total_cost
+                resource_cost,
+                median_price
             FROM resources
             WHERE rate_code = ?
             ORDER BY resource_code
@@ -219,6 +217,15 @@ class CostCalculator:
 
         try:
             rows = self.db_manager.execute_query(sql, (rate_code,))
+
+            # Check if we got results
+            if not rows:
+                # Return basic calculation with note about missing detailed breakdown
+                result["breakdown"] = []
+                result["note"] = (
+                    "Detailed resource breakdown not available in current database schema"
+                )
+                return result
 
             # Get unit_quantity from result to calculate multiplier
             sql_rate = """
@@ -241,33 +248,23 @@ class CostCalculator:
             # Calculate multiplier for proportional adjustments
             multiplier = quantity / unit_quantity
 
-            # Build resource breakdown
+            # Build resource breakdown (minimal schema version)
             breakdown = []
             for row in rows:
-                (
-                    resource_code,
-                    resource_name,
-                    resource_type,
-                    orig_quantity,
-                    unit,
-                    unit_cost,
-                    total_cost,
-                ) = row
+                resource_code, resource_cost, median_price = row
 
-                # Calculate adjusted values
-                adjusted_quantity = orig_quantity * multiplier
-                adjusted_cost = total_cost * multiplier
+                # Calculate adjusted cost for this quantity
+                adjusted_cost = resource_cost * multiplier
 
                 breakdown.append(
                     {
                         "resource_code": resource_code,
-                        "resource_name": resource_name,
-                        "resource_type": resource_type,
-                        "original_quantity": round(orig_quantity, 2),
-                        "adjusted_quantity": round(adjusted_quantity, 2),
-                        "unit": unit,
-                        "unit_cost": round(unit_cost, 2),
+                        "resource_cost_per_unit": round(resource_cost, 2),
+                        "median_price": round(median_price, 2)
+                        if median_price
+                        else None,
                         "adjusted_cost": round(adjusted_cost, 2),
+                        "note": "Minimal schema - detailed resource info unavailable",
                     }
                 )
 
