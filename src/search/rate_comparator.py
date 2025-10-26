@@ -207,7 +207,7 @@ class RateComparator:
         )
 
         with DatabaseManager(self.db_path) as db:
-            # Get source rate and its search_text
+            # Get source rate and use rate_full_name for similarity search
             source_sql = """
                 SELECT
                     rate_code,
@@ -216,8 +216,7 @@ class RateComparator:
                     unit_quantity,
                     total_cost,
                     material_cost,
-                    (labor_cost + machine_cost) as resources_cost,
-                    search_text
+                    (labor_cost + machine_cost) as resources_cost
                 FROM rates
                 WHERE rate_code = ?
             """
@@ -236,14 +235,13 @@ class RateComparator:
                 source_total_cost,
                 source_material_cost,
                 source_resources_cost,
-                search_text,
             ) = source_row
 
             logger.debug(f"Source rate: {source_code} - {source_name}")
 
-            # Extract keywords from search_text for FTS5 query
-            # Use the full search_text as the query (FTS5 will tokenize and rank)
-            fts_query = self._extract_keywords(search_text)
+            # Extract keywords from rate_full_name for FTS5 query
+            # Use the full rate_full_name as the query (FTS5 will tokenize and rank)
+            fts_query = self._extract_keywords(source_name)
 
             logger.debug(f"FTS5 query: {fts_query[:100]}...")
 
