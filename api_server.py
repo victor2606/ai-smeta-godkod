@@ -43,6 +43,7 @@ app = FastAPI(
     title="Construction Estimator API",
     description="HTTP REST API for construction rate search and cost calculation",
     version="1.0.0",
+    root_path="/api",  # For reverse proxy path routing
 )
 
 
@@ -123,7 +124,7 @@ class CompareRequest(BaseModel):
 
 
 # API Endpoints
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Health check endpoint for container orchestration"""
     return {

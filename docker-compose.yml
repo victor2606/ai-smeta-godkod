@@ -24,8 +24,34 @@ services:
     container_name: construction-estimator-mcp
 
     ports:
-      - "8002:8000" # MCP server SSE endpoint
+      - "8002:8000" # MCP server HTTP Streamable endpoint
       - "8003:8001" # Health check endpoint
+      - "8004:8002" # FastAPI REST endpoint
+
+    labels:
+      # Traefik routing for Coolify
+      - "traefik.enable=true"
+
+      # MCP endpoint: /mcp
+      - "traefik.http.routers.mcp-server.rule=Host(`mcp-piplines.godkod.ru`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.mcp-server.entrypoints=websecure"
+      - "traefik.http.routers.mcp-server.tls=true"
+      - "traefik.http.routers.mcp-server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mcp-server.loadbalancer.server.port=8000"
+
+      # FastAPI endpoints: /api
+      - "traefik.http.routers.fastapi-server.rule=Host(`mcp-piplines.godkod.ru`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.fastapi-server.entrypoints=websecure"
+      - "traefik.http.routers.fastapi-server.tls=true"
+      - "traefik.http.routers.fastapi-server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.fastapi-server.loadbalancer.server.port=8002"
+
+      # Health check: /health
+      - "traefik.http.routers.health-server.rule=Host(`mcp-piplines.godkod.ru`) && PathPrefix(`/health`)"
+      - "traefik.http.routers.health-server.entrypoints=websecure"
+      - "traefik.http.routers.health-server.tls=true"
+      - "traefik.http.routers.health-server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.health-server.loadbalancer.server.port=8001"
 
     volumes:
       # CRITICAL: Mount database file (read-only for safety)
