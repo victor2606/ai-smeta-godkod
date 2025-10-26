@@ -124,7 +124,7 @@ class CompareRequest(BaseModel):
 
 
 # API Endpoints
-@app.get("/api/health")
+@app.get("/health")
 async def health_check():
     """Health check endpoint for container orchestration"""
     return {
@@ -135,7 +135,7 @@ async def health_check():
     }
 
 
-@app.post("/api/natural_search")
+@app.post("/natural_search")
 async def natural_search(request: SearchRequest):
     """
     Full-text search for construction rates using Russian text query.
@@ -160,7 +160,7 @@ async def natural_search(request: SearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/vector_search")
+@app.post("/vector_search")
 async def vector_search(request: VectorSearchRequest):
     """
     Semantic vector search for construction rates using embeddings.
@@ -193,7 +193,7 @@ async def vector_search(request: VectorSearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/quick_calculate")
+@app.post("/quick_calculate")
 async def quick_calculate(request: QuickCalculateRequest):
     """
     Calculate cost for a rate with auto-detection of input type.
@@ -232,7 +232,7 @@ async def quick_calculate(request: QuickCalculateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/show_rate_details")
+@app.post("/show_rate_details")
 async def show_rate_details(request: RateDetailsRequest):
     """
     Get comprehensive resource breakdown for a rate.
@@ -271,7 +271,7 @@ async def show_rate_details(request: RateDetailsRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/compare_variants")
+@app.post("/compare_variants")
 async def compare_variants(request: CompareRequest):
     """
     Compare multiple rates side-by-side for cost analysis.
