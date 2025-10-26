@@ -2,7 +2,7 @@
 set -e
 
 echo "Starting MCP server on port 8000..."
-python mcp_server.py &
+PORT=8000 python mcp_server.py &
 MCP_PID=$!
 
 echo "Waiting 2 seconds for MCP server to start..."
