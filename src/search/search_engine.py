@@ -203,6 +203,7 @@ class SearchEngine:
                         "rate_code": rate_code,
                         "rate_full_name": rate_full_name,
                         "unit_measure_full": unit_measure_full,
+                        "unit_type": unit_type,
                         "cost_per_unit": round(cost_per_unit, 2),
                         "total_cost": round(total_cost, 2),
                         "rank": round(rank, 4),
