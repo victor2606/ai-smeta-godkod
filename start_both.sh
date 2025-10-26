@@ -12,19 +12,19 @@ echo "Starting FastAPI server on port 8002..."
 DATABASE_PATH=${DB_PATH} PORT=8002 python api_server.py &
 API_PID=$!
 
-echo "Starting nginx on port 80..."
+echo "Starting nginx on port 8080..."
 nginx -g 'daemon off;' &
 NGINX_PID=$!
 
 echo "All services started:"
 echo "  - MCP server (PID: $MCP_PID) on port 8000"
 echo "  - FastAPI server (PID: $API_PID) on port 8002"
-echo "  - Nginx (PID: $NGINX_PID) on port 80"
+echo "  - Nginx (PID: $NGINX_PID) on port 8080"
 echo ""
 echo "External access via nginx:"
-echo "  http://localhost/mcp -> MCP server"
-echo "  http://localhost/api -> FastAPI server"
-echo "  http://localhost/health -> Health check"
+echo "  http://localhost:8080/mcp -> MCP server"
+echo "  http://localhost:8080/api -> FastAPI server"
+echo "  http://localhost:8080/health -> Health check"
 
 # Function to handle shutdown
 cleanup() {

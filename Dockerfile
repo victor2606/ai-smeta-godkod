@@ -55,12 +55,12 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Database path (will be mounted as volume)
 ENV DB_PATH=/app/data/processed/estimates.db
 
-# Expose only nginx port (80) - nginx will route internally
-EXPOSE 80
+# Expose only nginx port (8080) - nginx will route internally
+EXPOSE 8080
 
 # Health check via nginx
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost/health')" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
 
 # Run both servers
 ENTRYPOINT ["./start_both.sh"]
