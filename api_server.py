@@ -251,17 +251,12 @@ async def show_rate_details(request: RateDetailsRequest):
 
         return {
             "success": True,
-            "rate_info": {
-                "rate_code": result["rate_code"],
-                "rate_full_name": result["rate_full_name"],
-                "unit_type": result["unit_type"],
-            },
-            "total_cost": round(result["total_cost"], 2),
+            "rate_info": result["rate_info"],
+            "total_cost": round(result["calculated_total"], 2),
             "cost_per_unit": round(result["cost_per_unit"], 2),
             "materials": round(result["materials"], 2),
-            "labor": round(result["labor"], 2),
-            "machinery": round(result["machinery"], 2),
-            "resources": result["resources"],
+            "resources": round(result["resources"], 2),
+            "breakdown": result.get("breakdown", []),
         }
 
     except ValueError as e:
