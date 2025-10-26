@@ -37,8 +37,7 @@ COPY --chown=mcpuser:mcpuser src/ ./src/
 COPY --chown=mcpuser:mcpuser mcp_server.py .
 COPY --chown=mcpuser:mcpuser health_server.py .
 COPY --chown=mcpuser:mcpuser api_server.py .
-COPY --chown=mcpuser:mcpuser start_both.sh .
-RUN chmod +x start_both.sh
+COPY --chown=mcpuser:mcpuser --chmod=755 start_both.sh .
 
 # Set PATH for user-installed packages
 ENV PATH=/home/mcpuser/.local/bin:$PATH
