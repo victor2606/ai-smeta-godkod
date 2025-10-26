@@ -202,17 +202,20 @@ class CostCalculator:
         # Get basic calculation first (validates inputs)
         result = self.calculate(rate_code, quantity)
 
-        # Query resources for this rate
-        # Note: Minimal schema only has resource_code, resource_cost, median_price
-        # Full schema has resource_name, resource_type, quantity, unit, unit_cost, total_cost
+        # Query resources for this rate with FULL schema
         sql = """
             SELECT
                 resource_code,
+                resource_name,
+                resource_type,
+                resource_quantity,
+                resource_unit,
+                resource_unit_cost,
                 resource_cost,
                 median_price
             FROM resources
             WHERE rate_code = ?
-            ORDER BY resource_code
+            ORDER BY resource_type, resource_code
         """
 
         try:
@@ -248,23 +251,38 @@ class CostCalculator:
             # Calculate multiplier for proportional adjustments
             multiplier = quantity / unit_quantity
 
-            # Build resource breakdown (minimal schema version)
+            # Build resource breakdown with FULL schema
             breakdown = []
             for row in rows:
-                resource_code, resource_cost, median_price = row
+                (
+                    resource_code,
+                    resource_name,
+                    resource_type,
+                    resource_quantity,
+                    resource_unit,
+                    resource_unit_cost,
+                    resource_cost,
+                    median_price,
+                ) = row
 
-                # Calculate adjusted cost for this quantity
+                # Calculate adjusted values for the requested quantity
+                adjusted_quantity = resource_quantity * multiplier
                 adjusted_cost = resource_cost * multiplier
 
                 breakdown.append(
                     {
                         "resource_code": resource_code,
-                        "resource_cost_per_unit": round(resource_cost, 2),
-                        "median_price": round(median_price, 2)
-                        if median_price
-                        else None,
+                        "resource_name": resource_name or "",
+                        "resource_type": resource_type or "",
+                        "original_quantity": round(resource_quantity, 4)
+                        if resource_quantity
+                        else 0,
+                        "adjusted_quantity": round(adjusted_quantity, 4),
+                        "unit": resource_unit or "",
+                        "unit_cost": round(resource_unit_cost, 2)
+                        if resource_unit_cost
+                        else 0,
                         "adjusted_cost": round(adjusted_cost, 2),
-                        "note": "Minimal schema - detailed resource info unavailable",
                     }
                 )
 
